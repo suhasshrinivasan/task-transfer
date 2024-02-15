@@ -1,0 +1,11 @@
+version: "3.9"
+
+services:
+  dev:
+    build: .
+    image: task-transfer
+    ports:
+      - "${JUPYTER_IP:-127.0.0.1}:${JUPYTER_PORT:-8899}:8888"
+    volumes:
+      - .:/src/project
+    entrypoint: /bin/bash -c "sleep infinity"
