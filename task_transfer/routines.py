@@ -1,9 +1,7 @@
 import torch
 
 
-def mc_marginal_log_likelihood(
-    joint, obs, mc_sample_size=torch.Size([]), reduction="none"
-):
+def mc_marginal_log_likelihood(joint, obs, mc_sample_size=(1,), reduction="none"):
     """
     Marginalize out the prior distribution to obtain the marginal likelihood of the data
     using Monte Carlo sampling.
@@ -25,7 +23,7 @@ def mc_marginal_log_likelihood(
             or of shape torch.Size([]) if reduction is "mean" or "sum".
     """
     prior_sample = joint.prior.rsample(mc_sample_size)
-    conditional_lp = joint.conditional(obs, cond=prior_sample)
+    conditional_lp = joint.conditional(obs, cond=prior_sample.unsqueeze(1))
     marginal_lp = torch.logsumexp(conditional_lp, dim=0) - torch.log(
         torch.tensor(conditional_lp.shape[0])
     )
