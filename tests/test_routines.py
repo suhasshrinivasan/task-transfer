@@ -44,7 +44,7 @@ class TestRoutines:
         tolerance, indicating the estimation is sufficiently accurate.
         """
         torch.manual_seed(_seed)
-        mu_prior = torch.rand((1, prior_dim))
+        mu_prior = torch.rand((prior_dim,))
         cov_prior = torch.rand((prior_dim, prior_dim))
         cov_prior = cov_prior @ cov_prior.T + 1e-6 * torch.eye(prior_dim)
         prior = G.TrainableDistributionAdapter(
