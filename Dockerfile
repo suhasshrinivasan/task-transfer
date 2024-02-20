@@ -12,7 +12,7 @@ RUN apt install -y fish graphviz
 # wandb for visualization, pymc for sampling
 # graphviz for visualizing pymc models
 # datajoint for experiment and data management
-RUN pip3 install wandb pymc graphviz datajoint
+RUN pip3 install wandb pymc graphviz datajoint pytest
 
 ### custom packages
 # gensn for probabilistic machine learning
