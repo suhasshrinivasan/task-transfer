@@ -1,3 +1,6 @@
+from collections import OrderedDict
+from copy import deepcopy
+
 import torch
 
 
@@ -103,3 +106,22 @@ def lstsq_solution(Y, X):
 #     A = solution[:-1]
 #     b = solution[-1]
 #     return A, b
+
+
+# From Neuralpredictors
+def copy_model_state(model):
+    """
+    Given PyTorch module `model`, makes a copy of the state onto CPU.
+    Args:
+        model: PyTorch module to copy state dict of
+    Returns:
+        A copy of state dict with all tensors allocated on the CPU
+    """
+    copy_dict = OrderedDict()
+    state_dict = model.state_dict()
+    for k, v in state_dict.items():
+        if torch.is_tensor(v):
+            copy_dict[k] = v.cpu() if v.is_cuda else v.clone()
+        else:
+            copy_dict[k] = deepcopy(v)
+    return copy_dict
