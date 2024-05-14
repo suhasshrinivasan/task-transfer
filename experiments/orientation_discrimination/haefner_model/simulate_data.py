@@ -17,6 +17,8 @@ def simulate_data(
     lam,
     x_phi,
     obs_sigma,
+    obs_h,
+    obs_w,
     n_samples,
     seed=42,
     data_fname="data.pkl",
@@ -102,6 +104,8 @@ def simulate_data(
         lam=lam,
         x_phi=x_phi,
         obs_sigma=obs_sigma,
+        obs_h=obs_h,
+        obs_w=obs_w,
     )
     print("Haefner model built.")
 

@@ -17,6 +17,8 @@ orginal_haefner_2afc_task1 = {
     "lam": 3.0,
     "x_phi": torch.linspace(0, np.pi, steps=45 + 1)[:-1],  # 45 instead of 1024 original
     "obs_sigma": 0.1,  # TODO: find out, not written in the paper
+    "obs_h": 12,  # height of image
+    "obs_w": 12,  # width of image
     "n_samples": 10_000,
     "seed": 42,
     "data_fname": datadir / "original_haefner_2afc_task_1_dataset.pkl",
