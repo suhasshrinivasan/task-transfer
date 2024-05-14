@@ -6,22 +6,23 @@ import torch
 from ..utils.math_utils import cos2_von_mises
 
 
-def plot_orientation_discrimination_task(
-    model,
+def plot_cohen_task(
+    p_c,
+    c1_psi,
+    c2_psi,
     dpi=300,
     fontsize=16,
     linewidth=4,
     tick_length=6,
     tick_width=2,
-    task_figname="task_design.pdf",
-    prior_figname="prior.pdf",
-    class_dist_figname="class_distribution.pdf",
+    task_figfname="task_design.pdf",
+    prior_figfname="prior.pdf",
+    cdist_figfname="class_distribution.pdf",
 ):
     # plot prior distribution of classes
     fig, ax = plt.subplots(dpi=300, figsize=(3, 4))
     x = [0, 1]
-    # d_ones = samples_dict['c'].mean()
-    height = [model.c1_prob, 1 - model.c1_prob]
+    height = [p_c, 1 - p_c]
     ax.bar(x=x, height=height, color="seagreen")
     ax.set_xticks(x)
     ax.set_xticklabels(["$C=1$", "$C=2$"], fontsize=fontsize)
@@ -39,16 +40,13 @@ def plot_orientation_discrimination_task(
     ax.set_title("Class distribution", fontsize=fontsize)
     sns.despine(ax=ax, trim=True)
     ax.spines[["bottom", "left"]].set_linewidth(tick_width)
-    fig.savefig(class_dist_figname, bbox_inches="tight", transparent=True)
+    fig.savefig(cdist_figfname, bbox_inches="tight", transparent=True)
 
+    # plot task design
     all_orientations = torch.linspace(0, torch.pi, steps=1000)
-    c1_orientation_density = cos2_von_mises(
-        all_orientations, model.c1_loc, model.c1_std
-    )
-    c2_orientation_density = cos2_von_mises(
-        all_orientations, model.c2_loc, model.c2_std
-    )
-    # first plot task design
+    # TODO: make a task object instead of defining the orientation density here
+    c1_orientation_density = cos2_von_mises(all_orientations, c1_psi, 1.0)
+    c2_orientation_density = cos2_von_mises(all_orientations, c2_psi, 1.0)
     fig_task, ax_task = plt.subplots(dpi=dpi)
     ax_task.plot(
         all_orientations,
@@ -64,6 +62,7 @@ def plot_orientation_discrimination_task(
         label="$C=2$",
         linewidth=linewidth,
     )
+    # TODO: set xticks based on task object
     xticks = np.array([0, np.pi / 4, np.pi / 2, 3 * np.pi / 4, np.pi])
     ax_task.set_xticks(xticks)
     ax_task.set_xticklabels(f"{int(xtick)}$^\circ$" for xtick in xticks * 180 / np.pi)
@@ -78,14 +77,11 @@ def plot_orientation_discrimination_task(
         width=tick_width,
     )
     ax_task.set_title("Task design", fontsize=fontsize)
-    # remove left spine
-    # set spine width
     ax_task.spines["bottom"].set_linewidth(tick_width)
     sns.despine(ax=ax_task, trim=True)
     ax_task.spines["left"].set_visible(False)
-    # remove all yticks
     ax_task.set_yticks([])
-    fig_task.savefig(task_figname, bbox_inches="tight", transparent=True)
+    fig_task.savefig(task_figfname, bbox_inches="tight", transparent=True)
 
     # plot prior
     fig_prior, ax_prior = plt.subplots(dpi=dpi)
@@ -96,7 +92,6 @@ def plot_orientation_discrimination_task(
         linewidth=linewidth,
         label="Prior",
     )
-    xticks = np.array([0, np.pi / 4, np.pi / 2, 3 * np.pi / 4, np.pi])
     ax_prior.set_xticks(xticks)
     ax_prior.set_xticklabels(f"{int(xtick)}$^\circ$" for xtick in xticks * 180 / np.pi)
     ax_prior.set_xlabel("Orientation $\\theta$ ($^\circ$)", fontsize=fontsize)
@@ -111,20 +106,14 @@ def plot_orientation_discrimination_task(
     )
     ax_prior.set_title("Prior", fontsize=fontsize)
     ax_prior.set_ylim(*ax_task.get_ylim())
-    # remove left spine
-    # set spine width
     ax_prior.spines["bottom"].set_linewidth(tick_width)
     sns.despine(ax=ax_prior, trim=True)
     ax_prior.spines["left"].set_visible(False)
-    # remove all yticks
     ax_prior.set_yticks([])
-    fig_prior.savefig(prior_figname, bbox_inches="tight", transparent=True)
+    fig_prior.savefig(prior_figfname, bbox_inches="tight", transparent=True)
 
 
-# def plot_orientation_discrimination_model():
-
-
-def plot_orientation_discrimination_model_prior(
+def plot_haefner_model(
     model,
     samples_dict,
     dpi=300,
@@ -140,14 +129,10 @@ def plot_orientation_discrimination_model_prior(
 ):
 
     all_orientations = torch.linspace(0, torch.pi, steps=1000)
-    c1_orientation_density = cos2_von_mises(
-        all_orientations, model.c1_loc, model.c1_std
-    )
-    c2_orientation_density = cos2_von_mises(
-        all_orientations, model.c2_loc, model.c2_std
-    )
+    c1_orientation_density = cos2_von_mises(all_orientations, model.c1_psi, 1.0)
+    c2_orientation_density = cos2_von_mises(all_orientations, model.c2_psi, 1.0)
 
-    fig_task, ax_task = plt.subplots(dpi=dpi)
+    _, ax_task = plt.subplots(dpi=dpi)
     ax_task.plot(
         all_orientations,
         c1_orientation_density,
@@ -176,8 +161,7 @@ def plot_orientation_discrimination_model_prior(
         width=tick_width,
     )
     ax_task.set_title("Task design", fontsize=fontsize)
-    # remove left spine
-    # set spine width
+
     ax_task.spines["bottom"].set_linewidth(tick_width)
     sns.despine(ax=ax_task, trim=True)
     ax_task.spines["left"].set_visible(False)
@@ -185,12 +169,8 @@ def plot_orientation_discrimination_model_prior(
     ax_task.set_yticks([])
 
     all_orientations = torch.linspace(0, torch.pi, steps=1000)
-    c1_orientation_density = cos2_von_mises(
-        all_orientations, model.c1_loc, model.c1_std
-    )
-    c2_orientation_density = cos2_von_mises(
-        all_orientations, model.c2_loc, model.c2_std
-    )
+    c1_orientation_density = cos2_von_mises(all_orientations, model.c1_psi, 1.0)
+    c2_orientation_density = cos2_von_mises(all_orientations, model.c2_psi, 1.0)
 
     # first set the random seed
     fig_prior, ax_prior = plt.subplots(dpi=dpi)
@@ -200,8 +180,8 @@ def plot_orientation_discrimination_model_prior(
 
     ax_g = ax_prior.twinx()
     ax_g.bar(
-        model.g_pref_orientations,
-        samples_dict["g"].mean(dim=0),
+        model.g_phi,
+        samples_dict["g_samples"].mean(dim=0),
         width=np.pi / model.n_g,
         color="gray",
         edgecolor="black",
@@ -268,8 +248,8 @@ def plot_orientation_discrimination_model_prior(
 
     ax_g = ax_prior_x.twinx()
     ax_g.bar(
-        model.x_pref_orientations,
-        samples_dict["x_scale"].mean(dim=0),
+        model.x_phi,
+        samples_dict["tau"].mean(dim=0),
         width=np.pi / model.n_x,
         color="indianred",
         edgecolor="darkred",
@@ -329,7 +309,7 @@ def plot_orientation_discrimination_model_prior(
     fig_prior_x.savefig(x_figname, bbox_inches="tight", transparent=True)
 
     # plot correlation matrix
-    xcorr = torch.corrcoef(samples_dict["x"].T)
+    xcorr = torch.corrcoef(samples_dict["x_samples"].T)
     # consider only the lower triangle without the diagonal
     mask = torch.triu(torch.ones_like(xcorr), diagonal=-1)
     antimask = torch.tril(torch.ones_like(xcorr), diagonal=-1)
@@ -348,14 +328,14 @@ def plot_orientation_discrimination_model_prior(
         cbar_kws={"ticks": cbar_ticks},
     )
 
-    ax_xcorr.set_xticks(np.arange(0, len(model.x_pref_orientations), 11))
-    ax_xcorr.set_yticks(np.arange(0, len(model.x_pref_orientations), 11))
+    ax_xcorr.set_xticks(np.arange(0, model.n_x, 11))
+    ax_xcorr.set_yticks(np.arange(0, model.n_x, 11))
 
     xticklabels = ax_xcorr.set_xticklabels(
-        [f"${int(np.rad2deg(x))}^\\circ$" for x in model.x_pref_orientations[::11]]
+        [f"${int(np.rad2deg(x))}^\\circ$" for x in model.x_phi[::11]]
     )
     yticklabels = ax_xcorr.set_yticklabels(
-        [f"${int(np.rad2deg(x))}^\\circ$" for x in model.x_pref_orientations[::11]]
+        [f"${int(np.rad2deg(x))}^\\circ$" for x in model.x_phi[::11]]
     )
 
     cbar = ax_xcorr.collections[0].colorbar
@@ -411,7 +391,7 @@ def plot_orientation_discrimination_model_prior(
     fig_xdist, axs_dist = plt.subplots(2, 2, dpi=dpi, sharex=True, sharey=True)
     for ax, idx in zip(axs_dist.flatten(), ids):
         sns.histplot(
-            samples_dict["x"][:, idx],
+            samples_dict["x_samples"][:, idx],
             ax=ax,
             stat="density",
             element="step",
@@ -424,13 +404,13 @@ def plot_orientation_discrimination_model_prior(
         ax.text(
             0.7,
             0.9,
-            f"$\\Psi^x=${int(np.rad2deg(model.x_pref_orientations[idx]))}$^\circ$",
+            f"$\\Psi^x=${int(np.rad2deg(model.x_phi[idx]))}$^\circ$",
             horizontalalignment="center",
             verticalalignment="center",
             transform=ax.transAxes,
             fontsize=fontsize,
         )
-        mean_samples = torch.mean(samples_dict["x"][:, idx])
+        mean_samples = torch.mean(samples_dict["x_samples"][:, idx])
         ax.axvline(mean_samples, color="red", linestyle="dotted", linewidth=linewidth)
         ax.text(
             0.7,
