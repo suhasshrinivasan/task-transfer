@@ -97,7 +97,7 @@ def build_transform_sequence(
     return layers
 
 
-def get_flow_prior_model(
+def build_flow_model(
     dims,
     flow_base_distribution,
     flow_depth,
