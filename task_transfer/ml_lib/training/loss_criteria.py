@@ -1,4 +1,4 @@
-def joint_negative_log_likelihood(joint_model, batch):
+def joint_nll(joint_model, batch):
     """
     Computes the negative log-likelihood of the batch of data using the joint model.
 
