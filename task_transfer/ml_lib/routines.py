@@ -2,6 +2,7 @@ from collections import OrderedDict
 from copy import deepcopy
 
 import torch
+from torch import nn
 
 
 def mc_marginal_log_likelihood(joint, obs, mc_sample_size=(1,), reduction="none"):
@@ -125,3 +126,21 @@ def copy_model_state(model):
         else:
             copy_dict[k] = deepcopy(v)
     return copy_dict
+
+
+def prepare_init(init_std=1e-3, init_bias=0.0):
+    """
+    Returns an initializer applicable for initializing
+    nn.Linear.
+
+    Specifically, nn.Linear is initialized as follows:
+    * nn.init_normal_(weight, std=init_std)
+    * nn.init.constant_(bias, 0.0)
+    """
+
+    def _init_weights(m):
+        if isinstance(m, nn.Linear):
+            nn.init.normal_(m.weight, std=init_std)
+            nn.init.constant_(m.bias, init_bias)
+
+    return _init_weights
