@@ -21,6 +21,8 @@ class Trainer:
     def __init__(
         self,
         loss_criterion,
+        eval_criterion,
+        eval_params,
         optimizer,
         lr,
         early_stopping_threshold,
@@ -41,6 +43,8 @@ class Trainer:
             device (torch.device): Device on which to train the model (CPU or GPU).
         """
         self.loss_criterion = loss_criterion
+        self.eval_criterion = eval_criterion
+        self.eval_params = eval_params
         self.optimizer = optimizer
         self.lr = lr
         self.early_stopping_threshold = early_stopping_threshold
@@ -78,7 +82,11 @@ class Trainer:
                     "val_loss": best_val_loss,
                 }
                 self.logger.log(metrics, track_message)
+                self._eval(model, val_loader, epoch)
                 return model
+
+            if epoch % 10 == 0:
+                self._eval(model, val_loader, epoch)
 
             metrics = {
                 "train_loss": train_loss,
@@ -142,3 +150,18 @@ class Trainer:
                 if batch_idx % 10 == 0:
                     print(f"Val Epoch: {epoch + 1} {batch_idx + 1}/{len(val_loader)}")
         return np.mean(val_losses)
+
+    def _eval(self, model, val_loader, epoch):
+        """
+        Evaluates the model on the validation dataset using custom evaluation logic
+
+        Args:
+            model (torch.nn.Module): The model to be evaluated.
+            val_loader (torch.utils.data.DataLoader): DataLoader for validation data.
+        """
+        self.eval_criterion(
+            model.prior,
+            val_loader,
+            epoch,
+            **self.eval_params,
+        )
