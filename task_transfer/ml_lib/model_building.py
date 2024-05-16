@@ -7,6 +7,7 @@ from gensn.distributions import TrainableDistributionAdapter
 from gensn.flow import FlowDistribution
 from gensn.transforms.invertible import IndependentAffine, SequentialTransform
 
+from .modules import MLP, LocScale
 from .transform_lookup import inv_nonlins
 
 
@@ -91,3 +92,37 @@ def build_flow_model(
 
     # construct the flow distribution
     return FlowDistribution(flow_base_distribution, flow_transform)
+
+
+def build_loc_scale_mlp(
+    in_features,
+    out_features,
+    n_layers,
+    nonlin,
+    dropout_rate,
+    init_std=1e-3,
+    nonneg_transform="exp",
+    clamp_pre_scale=False,
+    pre_scale_max=10.0,
+):
+    mlp_core = MLP(
+        in_features=in_features,
+        out_features=out_features,
+        n_layers=n_layers,
+        nonlin=nonlin,
+        dropout_rate=dropout_rate,
+        init_std=init_std,
+    )
+    return LocScale(
+        mlp_core,
+        nonneg_transform=nonneg_transform,
+        clamp_pre_scale=clamp_pre_scale,
+        pre_scale_max=pre_scale_max,
+    )
+
+
+def build_conditional(cond_dist, likelihood):
+    if cond_dist == "indep_normal":
+        return G.IndependentNormal(_parameters=likelihood)
+    else:
+        raise NotImplementedError("Unknown conditional distribution")
