@@ -10,5 +10,5 @@ def joint_nll(joint_model, batch):
     Returns:
         torch.Tensor: The negative log-likelihood of the batch of data.
     """
-    obs, response = batch
+    response, obs = batch
     return -joint_model.log_prob(response, obs)
