@@ -6,7 +6,7 @@ RUN apt-get update
 RUN pip3 install --upgrade pip
 
 ### apt packages
-RUN apt install -y fish graphviz
+RUN apt install -y fish graphviz tree
 
 ### python packages
 # wandb for visualization, pymc for sampling
