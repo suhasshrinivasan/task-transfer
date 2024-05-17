@@ -166,6 +166,7 @@ def build_trainer(training_cfg, generative_model):
         loss_criterion=loss_criterion,
         eval_criterion=eval_criterion,
         eval_params=eval_params,
+        eval_interval=training_cfg["eval_interval"],
         optimizer=optimizer,
         lr=training_cfg["lr"],
         early_stopping_threshold=training_cfg["early_stopping_threshold"],
@@ -218,6 +219,7 @@ def plot_training_results(trainer_output, plotting_params):
         bbox_inches="tight",
         transparent=True,
     )
+    plt.close(fig)
 
 
 def train_generative_model(data_cfg, model_cfg, training_cfg):
