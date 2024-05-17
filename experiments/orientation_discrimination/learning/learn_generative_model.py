@@ -2,6 +2,8 @@ import pickle
 from pathlib import Path
 
 import gensn.distributions as G
+import matplotlib.pyplot as plt
+import seaborn as sns
 import torch
 from generative_model_configs import gaussian_linear_likelihood, marginal_flow_prior
 from torch.optim import Adam
@@ -11,7 +13,6 @@ from training_configs import generative_model_trainer_config as training_cfg
 from experiments.orientation_discrimination.haefner_model import (
     configs as haefner_data_cfg,
 )
-from task_transfer.evaluation.evaluate_generative_model import visualize_marginal_flow
 from task_transfer.ml_lib.model_building import (
     build_conditional,
     build_flow_model,
@@ -20,15 +21,6 @@ from task_transfer.ml_lib.model_building import (
 from task_transfer.ml_lib.training.loss_criteria import joint_nll
 from task_transfer.ml_lib.training.trainer import Trainer
 from task_transfer.ml_lib.training.training_tools import TrainLogger
-
-# build dataloaders
-# load data
-# build model
-# train model
-# evaluate model
-# save model
-# save evaluation results
-# save configs
 
 
 def build_dataloaders(data_cfg, training_cfg):
@@ -106,7 +98,9 @@ def update_model_cfg(model_cfg, train_loader):
     responses, images = next(iter(train_loader))
     model_cfg["prior"]["dims"] = responses.shape[1]
     model_cfg["likelihood"]["in_features"] = responses.shape[1]
-    model_cfg["likelihood"]["out_features"] = images.shape[1]
+    model_cfg["likelihood"]["out_features_core"] = images.shape[1]
+    model_cfg["likelihood"]["out_features_loc"] = images.shape[1]
+    model_cfg["likelihood"]["out_features_scale"] = images.shape[1]
     return model_cfg
 
 
@@ -123,7 +117,9 @@ def build_generative_model(model_cfg):
     prior = build_flow_model(**model_cfg["prior"])
     likelihood = build_loc_scale_mlp(
         in_features=model_cfg["likelihood"]["in_features"],
-        out_features=model_cfg["likelihood"]["out_features"],
+        out_features_core=model_cfg["likelihood"]["out_features_core"],
+        out_features_loc=model_cfg["likelihood"]["out_features_loc"],
+        out_features_scale=model_cfg["likelihood"]["out_features_scale"],
         n_layers=model_cfg["likelihood"]["n_layers"],
         nonlin=model_cfg["likelihood"]["nonlin"],
         dropout_rate=model_cfg["likelihood"]["dropout_rate"],
@@ -154,10 +150,8 @@ def build_trainer(training_cfg, generative_model):
     """
 
     loss_criterion = joint_nll
-    eval_criterion = visualize_marginal_flow
-    eval_params = {
-        "fig_save_dir": Path("/src/project/figures"),
-    }
+    eval_criterion = training_cfg["eval_criterion"]
+    eval_params = training_cfg["eval_params"]
     optimizer = Adam(
         generative_model.parameters(),
         lr=training_cfg["lr"],
@@ -182,6 +176,50 @@ def build_trainer(training_cfg, generative_model):
     return trainer
 
 
+def plot_training_results(trainer_output, plotting_params):
+    """
+    Plot the training results.
+
+    Args:
+        trainer_output (dict): Output dictionary from the trainer, has the following
+            keys: "train_loss", "val_loss"
+            values: List of training and validation losses.
+    """
+    # Plot training results
+    train_losses = trainer_output["train_loss"]
+    val_losses = trainer_output["val_loss"]
+    fig, ax = plt.subplots(dpi=plotting_params["dpi"])
+    ax.plot(
+        train_losses,
+        label="Train",
+        marker="o",
+        linestyle="--",
+        color="indianred",
+    )
+    # plot with discrete markers
+
+    ax.plot(val_losses, label="Validation", marker="o", linestyle="--", color="teal")
+    ax.set_xlabel("Epochs", fontsize=plotting_params["fontsize"])
+    ax.set_ylabel("NLL", fontsize=plotting_params["fontsize"])
+    ax.set_title("Training and Validation NLL", fontsize=plotting_params["fontsize"])
+    ax.tick_params(
+        axis="both",
+        which="both",
+        labelsize=plotting_params["fontsize"],
+        length=plotting_params["tick_length"],
+        width=plotting_params["tick_width"],
+    )
+    ax.legend(prop={"size": plotting_params["fontsize"]})
+
+    ax.spines[["left", "bottom"]].set_linewidth(plotting_params["tick_width"])
+    sns.despine(ax=ax, trim=True)
+    fig.savefig(
+        plotting_params["fig_save_dir"] / "training_val_loss.pdf",
+        bbox_inches="tight",
+        transparent=True,
+    )
+
+
 def train_generative_model(data_cfg, model_cfg, training_cfg):
     """
     Train the generative model using the provided configurations.
@@ -198,10 +236,13 @@ def train_generative_model(data_cfg, model_cfg, training_cfg):
     model_cfg = update_model_cfg(model_cfg, train_loader)
     generative_model = build_generative_model(model_cfg)
     trainer = build_trainer(training_cfg, generative_model)
-    model = trainer.train(
+    trainer_output = trainer.train(
         generative_model, train_loader, val_loader, training_cfg["n_epochs"]
     )
-    return model
+    plot_training_results(
+        trainer_output,
+        training_cfg["eval_params"]["loss_curve_params"],
+    )
 
 
 def main():
