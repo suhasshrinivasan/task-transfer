@@ -68,9 +68,13 @@ class Trainer:
         Returns:
             torch.nn.Module: The best model based on validation loss.
         """
+        train_losses = []
+        val_losses = []
         for epoch in range(n_epochs):
             train_loss = self._train(model, train_loader, epoch)
+            train_losses.append(train_loss)
             val_loss = self._val(model, val_loader, epoch)
+            val_losses.append(val_loss)
             track_message = f"Epoch {epoch + 1}/{n_epochs}"
 
             # Early stopping check
@@ -83,7 +87,7 @@ class Trainer:
                 }
                 self.logger.log(metrics, track_message)
                 self._eval(model, val_loader, epoch)
-                return model
+                return {"train_loss": train_losses, "val_loss": val_losses}
 
             if epoch % 10 == 0:
                 self._eval(model, val_loader, epoch)
@@ -102,7 +106,7 @@ class Trainer:
             "val_loss": best_val_loss,
         }
         self.logger.log(metrics, track_message)
-        return model
+        return {"train_loss": train_losses, "val_loss": val_losses}
 
     def _train(self, model, train_loader, epoch):
         """
@@ -160,8 +164,9 @@ class Trainer:
             val_loader (torch.utils.data.DataLoader): DataLoader for validation data.
         """
         self.eval_criterion(
-            model.prior,
+            model,
             val_loader,
             epoch,
-            **self.eval_params,
+            self.device,
+            self.eval_params,
         )
