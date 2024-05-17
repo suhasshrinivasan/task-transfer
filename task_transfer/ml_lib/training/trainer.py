@@ -23,6 +23,7 @@ class Trainer:
         loss_criterion,
         eval_criterion,
         eval_params,
+        eval_interval,
         optimizer,
         lr,
         early_stopping_threshold,
@@ -45,6 +46,7 @@ class Trainer:
         self.loss_criterion = loss_criterion
         self.eval_criterion = eval_criterion
         self.eval_params = eval_params
+        self.eval_interval = eval_interval
         self.optimizer = optimizer
         self.lr = lr
         self.early_stopping_threshold = early_stopping_threshold
@@ -71,6 +73,8 @@ class Trainer:
         train_losses = []
         val_losses = []
         for epoch in range(n_epochs):
+            if epoch % self.eval_interval == 0:
+                self._eval(model, val_loader, epoch)
             train_loss = self._train(model, train_loader, epoch)
             train_losses.append(train_loss)
             val_loss = self._val(model, val_loader, epoch)
@@ -89,9 +93,6 @@ class Trainer:
                 self._eval(model, val_loader, epoch)
                 return {"train_loss": train_losses, "val_loss": val_losses}
 
-            if epoch % 10 == 0:
-                self._eval(model, val_loader, epoch)
-
             metrics = {
                 "train_loss": train_loss,
                 "val_loss": val_loss,
@@ -106,6 +107,7 @@ class Trainer:
             "val_loss": best_val_loss,
         }
         self.logger.log(metrics, track_message)
+        self._eval(model, val_loader, epoch)
         return {"train_loss": train_losses, "val_loss": val_losses}
 
     def _train(self, model, train_loader, epoch):

@@ -17,6 +17,7 @@ def visualize_marginal_flow(
     linewidth=3,
     fontsize=10,
     plot_xlim=(0, 7),
+    plot_ylim=(0, 1),
     density_color="darkblue",
     data_color="darkorange",
     data_alpha=0.4,
@@ -60,6 +61,7 @@ def visualize_marginal_flow(
                 alpha=data_alpha,
             )
             ax.set_xlim(*plot_xlim)
+            ax.set_ylim(*plot_ylim)
             ax.axis("off")
         # ax.tick_params(axis="both", which="both", labelsize=fontsize)
         # ax.set_ylabel("$p(x)$", fontsize=fontsize)
@@ -71,6 +73,8 @@ def visualize_marginal_flow(
             bbox_inches="tight",
             transparent=True,
         )
+        # close the figure to avoid memory leak
+        plt.close(fig)
 
 
 def visualize_conditional_features(
@@ -112,6 +116,8 @@ def visualize_conditional_features(
         bbox_inches="tight",
         transparent=True,
     )
+    # close the figure to avoid memory leak
+    plt.close(fig)
 
 
 def evaluate_generative_model(

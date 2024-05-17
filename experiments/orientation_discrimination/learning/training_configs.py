@@ -5,7 +5,7 @@ from task_transfer.evaluation.evaluate_generative_model import evaluate_generati
 generative_model_trainer_config = {
     "lr": 1e-3,
     "weight_decay": 0,
-    "n_epochs": 150,
+    "n_epochs": 200,
     "batch_size": 128,
     "early_stopping_threshold": 10,
     "early_stopping_patience": 10,
@@ -13,6 +13,7 @@ generative_model_trainer_config = {
     "train_prop": 0.6,
     "val_prop": 0.2,
     "eval_criterion": evaluate_generative_model,
+    "eval_interval": 1,
     "eval_params": {
         "flow_params": {
             "density_support": (1e-3, 10),
