@@ -10,7 +10,9 @@ gaussian_linear_likelihood = {
     "cond_dist": "indep_normal",
     "nonneg_transform": "exp",
     "in_features": None,  # to be determined from data
-    "out_features": None,  # to be determined from data
+    "out_features_core": None,  # to be determined from data
+    "out_features_loc": None,  # to be determined from data
+    "out_features_scale": None,  # to be determined from data
     "n_layers": 1,
     "nonlin": "none",
     "dropout_rate": 0.0,
