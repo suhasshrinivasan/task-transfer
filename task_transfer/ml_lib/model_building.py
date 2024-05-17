@@ -96,7 +96,9 @@ def build_flow_model(
 
 def build_loc_scale_mlp(
     in_features,
-    out_features,
+    out_features_core,
+    out_features_loc,
+    out_features_scale,
     n_layers,
     nonlin,
     dropout_rate,
@@ -107,7 +109,7 @@ def build_loc_scale_mlp(
 ):
     mlp_core = MLP(
         in_features=in_features,
-        out_features=out_features,
+        out_features=out_features_core,
         n_layers=n_layers,
         nonlin=nonlin,
         dropout_rate=dropout_rate,
@@ -115,6 +117,9 @@ def build_loc_scale_mlp(
     )
     return LocScale(
         mlp_core,
+        out_features_loc,
+        out_features_scale,
+        init_std=init_std,
         nonneg_transform=nonneg_transform,
         clamp_pre_scale=clamp_pre_scale,
         pre_scale_max=pre_scale_max,
