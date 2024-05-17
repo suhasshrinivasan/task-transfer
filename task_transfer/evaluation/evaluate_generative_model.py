@@ -12,7 +12,7 @@ def visualize_marginal_flow(
     device="cpu",
     density_support=(1e-3, 10),
     density_n_samples=1000,
-    dims_to_plot=range(10),
+    dims_to_plot=range(45),
     fig_dpi=300,
     linewidth=3,
     fontsize=10,
@@ -39,13 +39,12 @@ def visualize_marginal_flow(
         )
         flow_density = flow.factorized_log_prob(x).exp()
         fig, axs = plt.subplots(
-            1,
-            n_dims_to_plot,
-            figsize=(6 * n_dims_to_plot, 4),
+            7,
+            7,
             sharey=True,
             dpi=fig_dpi,
         )
-        for idx, ax in zip(dims_to_plot, axs):
+        for idx, ax in zip(dims_to_plot, axs.ravel()):
             ax.plot(
                 x[:, idx],
                 flow_density[:, idx],
@@ -60,10 +59,97 @@ def visualize_marginal_flow(
                 color=data_color,
                 alpha=data_alpha,
             )
-            ax.tick_params(axis="both", which="both", labelsize=fontsize)
-            ax.set_ylabel("$p(x)$", fontsize=fontsize)
-            ax.set_xlabel("x", fontsize=fontsize)
             ax.set_xlim(*plot_xlim)
+            ax.axis("off")
+        # ax.tick_params(axis="both", which="both", labelsize=fontsize)
+        # ax.set_ylabel("$p(x)$", fontsize=fontsize)
+        # ax.set_xlabel("x", fontsize=fontsize)
+        for ax in axs.ravel()[n_dims_to_plot:]:
+            ax.axis("off")
         fig.savefig(
-            fig_save_dir / f"{epoch}.pdf", bbox_inches="tight", transparent=True
+            fig_save_dir / f"{epoch}.pdf",
+            bbox_inches="tight",
+            transparent=True,
         )
+
+
+def visualize_conditional_features(
+    conditional,
+    data_loader,
+    epoch,
+    unit_perturbation=1,
+    device="cpu",
+    dims_to_plot=range(45),
+    fig_dpi=300,
+    fig_save_dir=Path("/src/project/figures/learning/"),
+    **catch_all,
+):
+    response, image = next(iter(data_loader))
+    image_len = image.shape[-1]
+    h, w = int(image_len**0.5), int(image_len**0.5)
+    fig, axs = plt.subplots(
+        7,
+        7,
+        sharey=True,
+        dpi=fig_dpi,
+    )
+    for dim, ax in zip(dims_to_plot, axs.ravel()):
+        perturbation = torch.zeros_like(response[0])
+        perturbation[dim] = unit_perturbation
+        perturbation = perturbation.to(device)
+        with torch.no_grad():
+            conditional.eval()
+            cond_dist = conditional.trainable_distribution.distribution(
+                cond=perturbation
+            )
+            mean = cond_dist.mean
+            ax.imshow(mean.reshape(h, w).cpu().numpy(), cmap="gray")
+            ax.axis("off")
+    for ax in axs.ravel()[len(dims_to_plot) :]:
+        ax.axis("off")
+    fig.savefig(
+        fig_save_dir / f"{epoch}.pdf",
+        bbox_inches="tight",
+        transparent=True,
+    )
+
+
+def evaluate_generative_model(
+    model,
+    data_loader,
+    epoch,
+    device="cpu",
+    eval_params={
+        "flow_params": {
+            "density_support": (1e-3, 10),
+            "density_n_samples": 1000,
+            "dims_to_plot": range(10),
+            "fig_dpi": 300,
+            "linewidth": 3,
+            "fontsize": 10,
+            "plot_xlim": (0, 7),
+            "density_color": "darkblue",
+            "data_color": "darkorange",
+            "data_alpha": 0.4,
+            "fig_save_dir": Path("/src/project/figures/learning/marginal_density/"),
+        },
+        "conditional_params": {
+            "unit_perturbation": 1,
+            "dims_to_plot": range(10),
+            "fig_dpi": 300,
+            "fig_save_dir": Path("/src/project/figures/learning/conditional_features/"),
+        },
+    },
+    **catch_all,
+):
+    visualize_marginal_flow(
+        model.prior, data_loader, epoch, device=device, **eval_params["flow_params"]
+    )
+    visualize_conditional_features(
+        model.conditional,
+        data_loader,
+        epoch,
+        device=device,
+        **eval_params["conditional_params"],
+    )
+    return
