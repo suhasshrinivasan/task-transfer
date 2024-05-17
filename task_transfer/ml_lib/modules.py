@@ -94,6 +94,8 @@ class LocScale(nn.Module):
     def __init__(
         self,
         core_nn,
+        out_features_loc,
+        out_features_scale,
         init_std=1e-3,
         nonneg_transform="exp",
         clamp_pre_scale=False,
@@ -111,13 +113,17 @@ class LocScale(nn.Module):
         """
         super().__init__()
         self.core_nn = core_nn
+        self.out_features_loc = out_features_loc
+        self.out_features_scale = out_features_scale
         self.init_std = init_std
         self.nonneg_transform = nonneg_transform
         self.clamp_pre_scale = clamp_pre_scale
         self.pre_scale_max = pre_scale_max
 
-        self.loc_module = nn.Linear(self.core_nn.out_features, 1)
-        self.pre_scale_module = nn.Linear(self.core_nn.out_features, 1)
+        self.loc_module = nn.Linear(self.core_nn.out_features, self.out_features_loc)
+        self.pre_scale_module = nn.Linear(
+            self.core_nn.out_features, self.out_features_scale
+        )
 
         self.init()
 
