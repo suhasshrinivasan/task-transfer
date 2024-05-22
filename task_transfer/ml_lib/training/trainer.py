@@ -21,15 +21,15 @@ class Trainer:
     def __init__(
         self,
         loss_criterion,
-        eval_criterion,
-        eval_params,
-        eval_interval,
         optimizer,
         lr,
         early_stopping_threshold,
         early_stopping_patience,
         logger,
         device,
+        eval_criterion=None,
+        eval_params=None,
+        eval_interval=None,
     ):
         """
         Initializes the Trainer class with the given parameters.
@@ -73,7 +73,7 @@ class Trainer:
         train_losses = []
         val_losses = []
         for epoch in range(n_epochs):
-            if epoch % self.eval_interval == 0:
+            if (self.eval_criterion is not None) and (epoch % self.eval_interval == 0):
                 self._eval(model, val_loader, epoch)
             train_loss = self._train(model, train_loader, epoch)
             train_losses.append(train_loss)
@@ -90,7 +90,8 @@ class Trainer:
                     "val_loss": best_val_loss,
                 }
                 self.logger.log(metrics, track_message)
-                self._eval(model, val_loader, epoch)
+                if self.eval_criterion is not None:
+                    self._eval(model, val_loader, epoch)
                 return {"train_loss": train_losses, "val_loss": val_losses}
 
             metrics = {
@@ -107,7 +108,8 @@ class Trainer:
             "val_loss": best_val_loss,
         }
         self.logger.log(metrics, track_message)
-        self._eval(model, val_loader, epoch)
+        if self.eval_criterion is not None:
+            self._eval(model, val_loader, epoch)
         return {"train_loss": train_losses, "val_loss": val_losses}
 
     def _train(self, model, train_loader, epoch):

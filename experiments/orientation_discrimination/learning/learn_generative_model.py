@@ -5,10 +5,17 @@ import gensn.distributions as G
 import matplotlib.pyplot as plt
 import seaborn as sns
 import torch
-from generative_model_configs import gaussian_linear_likelihood, marginal_flow_prior
+from generative_model_configs import (
+    full_flow_prior,
+    gaussian_linear_likelihood,
+    marginal_flow_prior,
+)
 from torch.optim import Adam
 from torch.utils.data import DataLoader, TensorDataset
-from training_configs import generative_model_trainer_config as training_cfg
+from training_configs import (
+    generative_model_trainer_config,
+    generative_model_trainer_config2,
+)
 
 from experiments.orientation_discrimination.haefner_model import (
     configs as haefner_data_cfg,
@@ -252,11 +259,16 @@ def main():
     Main function to execute the training of the generative model.
     """
     data_cfg = haefner_data_cfg.orginal_haefner_2afc_task1
+    # model_cfg = {
+    #     "prior": marginal_flow_prior,
+    #     "likelihood": gaussian_linear_likelihood,
+    # }
     model_cfg = {
-        "prior": marginal_flow_prior,
+        "prior": full_flow_prior,
         "likelihood": gaussian_linear_likelihood,
     }
-    train_generative_model(data_cfg, model_cfg, training_cfg)
+    # train_generative_model(data_cfg, model_cfg, training_cfg)
+    train_generative_model(data_cfg, model_cfg, generative_model_trainer_config2)
 
 
 if __name__ == "__main__":

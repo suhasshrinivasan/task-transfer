@@ -45,3 +45,27 @@ generative_model_trainer_config = {
         },
     },
 }
+
+generative_model_trainer_config2 = {
+    "lr": 5e-3,
+    "weight_decay": 0,
+    "n_epochs": 200,
+    "batch_size": 128,
+    "early_stopping_threshold": 100,
+    "early_stopping_patience": 100,
+    "logging_type": "stdout",
+    "train_prop": 0.6,
+    "val_prop": 0.2,
+    "eval_criterion": None,
+    "eval_interval": None,
+    "eval_params": {
+        "loss_curve_params": {
+            "dpi": 300,
+            "fontsize": 16,
+            "linewidth": 4,
+            "tick_length": 6,
+            "tick_width": 2,
+            "fig_save_dir": Path("/src/project/figures/learning/loss_curves/"),
+        },
+    },
+}

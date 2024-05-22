@@ -4,6 +4,16 @@ marginal_flow_prior = {
     "flow_initial_nonlinearity": "inv_softplus",  # flow direction is data -> latent
     "flow_nonlinearity": "tanh",
     "flow_base_distribution": "normal",
+    "affine_type": "factorized",
+}
+
+full_flow_prior = {
+    "dims": None,  # to be determined from data
+    "flow_depth": 2,
+    "flow_initial_nonlinearity": "inv_softplus",  # flow direction is data -> latent
+    "flow_nonlinearity": "tanh",
+    "flow_base_distribution": "normal",
+    "affine_type": "full",
 }
 
 gaussian_linear_likelihood = {

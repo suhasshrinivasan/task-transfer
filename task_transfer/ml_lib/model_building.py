@@ -5,7 +5,7 @@ import torch
 import torch.distributions as D
 from gensn.distributions import TrainableDistributionAdapter
 from gensn.flow import FlowDistribution
-from gensn.transforms.invertible import IndependentAffine, SequentialTransform
+from gensn.transforms.invertible import Affine, IndependentAffine, SequentialTransform
 
 from .modules import MLP, LocScale
 from .transform_lookup import inv_nonlins
@@ -27,6 +27,7 @@ def build_transform_sequence(
     final_nonlin="none",
     affine_init_mean=1.3,
     affine_init_std=None,
+    affine_type="factorized",
 ):
     layers = []
 
@@ -38,8 +39,16 @@ def build_transform_sequence(
     # NOTE: this assumes that sharing identical nonlin layer
     # multiple times in a network is okay. Probably fine.
     nonlin_layer = inv_nonlins[nonlin]()
+    if affine_type == "factorized":
+        affine_layer_class = IndependentAffine
+    elif affine_type == "full":
+        affine_layer_class = Affine
+    elif affine_type == "lowrank":
+        return NotImplementedError("Lowrank not implemented")
+    else:
+        raise ValueError("Unknown affine type")
     for _ in range(depth):
-        affine_layer = IndependentAffine(dims)
+        affine_layer = affine_layer_class(dims)
         initialize_affine_transform_(
             affine_layer, init_mean=affine_init_mean, init_std=affine_init_std
         )
@@ -48,7 +57,7 @@ def build_transform_sequence(
 
     # why is this separated?
     if depth > 0:
-        affine_layer = IndependentAffine(dims)
+        affine_layer = affine_layer_class(dims)
         initialize_affine_transform_(
             affine_layer, init_mean=affine_init_mean, init_std=affine_init_std
         )
@@ -67,6 +76,7 @@ def build_flow_model(
     flow_depth,
     flow_initial_nonlinearity,
     flow_nonlinearity,
+    affine_type="factorized",
 ):
     if flow_base_distribution == "normal":
         flow_base_distribution = G.IndependentNormal(
@@ -87,6 +97,7 @@ def build_flow_model(
             depth=flow_depth,
             nonlin=flow_nonlinearity,
             initial_nonlin=flow_initial_nonlinearity,
+            affine_type=affine_type,
         )
     )
 
