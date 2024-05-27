@@ -75,6 +75,7 @@ def build_flow_model(
     flow_base_distribution,
     flow_depth,
     flow_initial_nonlinearity,
+    flow_final_nonlinearity,
     flow_nonlinearity,
     affine_type="factorized",
 ):
@@ -97,6 +98,7 @@ def build_flow_model(
             depth=flow_depth,
             nonlin=flow_nonlinearity,
             initial_nonlin=flow_initial_nonlinearity,
+            final_nonlin=flow_final_nonlinearity,
             affine_type=affine_type,
         )
     )

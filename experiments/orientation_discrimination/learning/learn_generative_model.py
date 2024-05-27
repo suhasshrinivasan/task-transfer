@@ -1,5 +1,4 @@
 import pickle
-from pathlib import Path
 
 import gensn.distributions as G
 import matplotlib.pyplot as plt
@@ -20,14 +19,14 @@ from training_configs import (
 from experiments.orientation_discrimination.haefner_model import (
     configs as haefner_data_cfg,
 )
+from task_transfer.ml_lib.loss_criteria import joint_nll
 from task_transfer.ml_lib.model_building import (
     build_conditional,
     build_flow_model,
     build_loc_scale_mlp,
 )
-from task_transfer.ml_lib.training.loss_criteria import joint_nll
-from task_transfer.ml_lib.training.trainer import Trainer
-from task_transfer.ml_lib.training.training_tools import TrainLogger
+from task_transfer.ml_lib.trainer import Trainer
+from task_transfer.ml_lib.training_tools import TrainLogger
 
 
 def build_dataloaders(data_cfg, training_cfg):
@@ -246,7 +245,10 @@ def train_generative_model(data_cfg, model_cfg, training_cfg):
     generative_model = build_generative_model(model_cfg)
     trainer = build_trainer(training_cfg, generative_model)
     trainer_output = trainer.train(
-        generative_model, train_loader, val_loader, training_cfg["n_epochs"]
+        generative_model,
+        train_loader,
+        val_loader,
+        training_cfg["n_epochs"],
     )
     plot_training_results(
         trainer_output,
