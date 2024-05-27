@@ -6,6 +6,7 @@ services:
     image: task-transfer
     ports:
       - "${JUPYTER_IP:-127.0.0.1}:${JUPYTER_PORT:-8899}:8888"
+    env_file: .env      
     volumes:
       - .:/src/project
     entrypoint: /bin/bash -c "sleep infinity"
