@@ -25,7 +25,7 @@ def build_haefner_model(
     Returns:
         HaefnerModel: An instance of the HaefnerModel initialized with the provided parameters.
     """
-    gabor_params = (
+    gabor_params = dict(
         {
             "canvas_size": [obs_h, obs_w],
             "sizes": [10],

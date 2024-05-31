@@ -72,9 +72,10 @@ class Trainer:
         """
         train_losses = []
         val_losses = []
+        eval_output = None
         for epoch in range(n_epochs):
             if (self.eval_criterion is not None) and (epoch % self.eval_interval == 0):
-                self._eval(model, val_loader, epoch)
+                eval_output = self._eval(model, val_loader, epoch)
             train_loss = self._train(model, train_loader, epoch)
             train_losses.append(train_loss)
             val_loss = self._val(model, val_loader, epoch)
@@ -91,8 +92,14 @@ class Trainer:
                 }
                 self.logger.log(metrics, track_message)
                 if self.eval_criterion is not None:
-                    self._eval(model, val_loader, epoch)
-                return {"train_loss": train_losses, "val_loss": val_losses}
+                    eval_output = self._eval(model, val_loader, epoch)
+                return {
+                    "tracker_output": {
+                        "train_loss": train_losses,
+                        "val_loss": val_losses,
+                    },
+                    "eval_output": eval_output,
+                }
 
             metrics = {
                 "train_loss": train_loss,
@@ -109,8 +116,11 @@ class Trainer:
         }
         self.logger.log(metrics, track_message)
         if self.eval_criterion is not None:
-            self._eval(model, val_loader, epoch)
-        return {"train_loss": train_losses, "val_loss": val_losses}
+            eval_output = self._eval(model, val_loader, epoch)
+        return {
+            "tracker_output": {"train_loss": train_losses, "val_loss": val_losses},
+            "eval_output": eval_output,
+        }
 
     def _train(self, model, train_loader, epoch):
         """
@@ -167,7 +177,7 @@ class Trainer:
             model (torch.nn.Module): The model to be evaluated.
             val_loader (torch.utils.data.DataLoader): DataLoader for validation data.
         """
-        self.eval_criterion(
+        return self.eval_criterion(
             model,
             val_loader,
             epoch,

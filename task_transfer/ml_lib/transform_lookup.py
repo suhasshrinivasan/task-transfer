@@ -23,6 +23,8 @@ inv_nonlins = {
     "inv_pow3": lambda: inv_nn.InverseTransform(inv_nn.Pow(3)),
     "sqrt": inv_nn.Sqrt,
     "inv_sqrt": lambda: inv_nn.InverseTransform(inv_nn.Sqrt()),
+    "leaky_relu": inv_nn.LeakyReLU,
+    "inv_leaky_relu": lambda: inv_nn.InverseTransform(inv_nn.LeakyReLU()),
 }
 
 nonlins = {

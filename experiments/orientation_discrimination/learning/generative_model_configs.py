@@ -16,6 +16,15 @@ full_flow_prior = {
     "affine_type": "full",
 }
 
+multivariate_normal_flow_prior = {
+    "dims": None,  # to be determined from data
+    "flow_depth": 3,
+    "flow_initial_nonlinearity": "inv_softplus",  # flow direction is data -> latent
+    "flow_nonlinearity": "tanh",
+    "flow_base_distribution": "multivariate_normal",
+    "affine_type": "factorized",
+}
+
 gaussian_linear_likelihood = {
     "cond_dist": "indep_normal",
     "nonneg_transform": "exp",

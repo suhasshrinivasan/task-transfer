@@ -8,6 +8,7 @@ from generative_model_configs import (
     full_flow_prior,
     gaussian_linear_likelihood,
     marginal_flow_prior,
+    multivariate_normal_flow_prior,
 )
 from torch.optim import Adam
 from torch.utils.data import DataLoader, TensorDataset
@@ -265,12 +266,17 @@ def main():
     #     "prior": marginal_flow_prior,
     #     "likelihood": gaussian_linear_likelihood,
     # }
+    # model_cfg = {
+    #     "prior": full_flow_prior,
+    #     "likelihood": gaussian_linear_likelihood,
+    # }
     model_cfg = {
-        "prior": full_flow_prior,
+        "prior": multivariate_normal_flow_prior,
         "likelihood": gaussian_linear_likelihood,
     }
     # train_generative_model(data_cfg, model_cfg, training_cfg)
-    train_generative_model(data_cfg, model_cfg, generative_model_trainer_config2)
+    # train_generative_model(data_cfg, model_cfg, generative_model_trainer_config2)
+    train_generative_model(data_cfg, model_cfg, generative_model_trainer_config)
 
 
 if __name__ == "__main__":

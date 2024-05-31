@@ -1,5 +1,6 @@
 import math
 
+import gensn
 import gensn.distributions as G
 import torch
 import torch.distributions as D
@@ -75,8 +76,8 @@ def build_flow_model(
     flow_base_distribution,
     flow_depth,
     flow_initial_nonlinearity,
-    flow_final_nonlinearity,
     flow_nonlinearity,
+    flow_final_nonlinearity="none",
     affine_type="factorized",
 ):
     if flow_base_distribution == "normal":
@@ -86,6 +87,13 @@ def build_flow_model(
     elif flow_base_distribution == "uniform":
         flow_base_distribution = TrainableDistributionAdapter(
             G.wrap_with_indep(D.Uniform), low=torch.zeros(dims), high=torch.ones(dims)
+        )
+    elif flow_base_distribution == "multivariate_normal":
+        # loc = torch.nn.Parameter(torch.randn(dims))
+        loc = torch.zeros(dims)
+        cov = gensn.parameters.Covariance(n_dims=dims)
+        flow_base_distribution = G.TrainableDistributionAdapter(
+            D.MultivariateNormal, loc=loc, covariance_matrix=cov
         )
     # TODO: add cases for conditional normal / uniform by simple construction
     else:

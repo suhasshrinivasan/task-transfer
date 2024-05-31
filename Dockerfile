@@ -13,6 +13,10 @@ RUN apt install -y fish graphviz tree tmux
 # graphviz for visualizing pymc models
 # datajoint for experiment and data management
 RUN pip3 install wandb pymc graphviz datajoint pytest
+RUN pip3 install --upgrade pyparsing
+
+# stable diffusion
+RUN pip3 install --upgrade diffusers transformers scipy
 
 ### custom packages
 # gensn for probabilistic machine learning

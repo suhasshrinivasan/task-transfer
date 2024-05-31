@@ -13,7 +13,7 @@ orginal_haefner_2afc_task1 = {
     "c2_psi": 3 * np.pi / 4,
     "kappa": 1.0,
     "g_phi": torch.linspace(0, np.pi, steps=9 + 1)[:-1],  # 9 instead of 256 original
-    "delta": 0.08,
+    "delta": 1,
     "lam": 3.0,
     "x_phi": torch.linspace(0, np.pi, steps=45 + 1)[:-1],  # 45 instead of 1024 original
     "obs_sigma": 0.1,  # TODO: find out, not written in the paper

@@ -9,12 +9,12 @@ from task_transfer.utils.utils import make_hash
 
 flow_prior_configs = OrderedDict(
     seed=[42, 100],
-    flow_depth=[2],
+    flow_depth=[2, 3],
     flow_initial_nonlin=["inv_softplus"],
     flow_final_nonlin=["none"],
-    flow_nonlin=["tanh"],
-    flow_base_dist=["normal"],
-    affine_type=["factorized"],
+    flow_nonlin=["tanh", "leaky_relu"],
+    flow_base_dist=["normal", "multivariate_normal"],
+    affine_type=["factorized", "full"],
 )
 
 flow_prior_configs_list = []
@@ -28,7 +28,7 @@ FlowPriorConfig.insert(flow_prior_configs_list, skip_duplicates=True)
 trainer_configs = OrderedDict(
     lr=[1e-3],
     weight_decay=[1e-3],
-    n_epochs=[200],
+    n_epochs=[250],
     batch_size=[128],
     early_stopping_threshold=[10],
     early_stopping_patience=[10],
@@ -58,4 +58,4 @@ for values in it.product(*dataloader_configs.values()):
 
 DataLoaderConfig.insert(dataloader_configs_list, skip_duplicates=True)
 
-FlowPriorResult.populate()
+FlowPriorResult.populate(reserve_jobs=True, order="random")

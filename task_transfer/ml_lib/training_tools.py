@@ -1,7 +1,7 @@
 import numpy as np
 import wandb
 
-from ..routines import copy_model_state
+from .routines import copy_model_state
 
 
 class EarlyStopper:

@@ -18,12 +18,12 @@ class FlowPriorResult(dj.Computed):
         -> FPTrainerConfig.proj(trainer_id='id')
         -> DataLoaderConfig.proj(dl_id='id')
         ---
-        train_ll_mean: float    # mean per dimension, per sample, in bits
-        train_ll_sem: float    # standard error of the mean
-        val_ll_mean: float
-        val_ll_sem: float
-        test_ll_mean: float
-        test_ll_sem: float
+        train_ll_mean: double    # mean per dimension, per sample, in nats
+        train_ll_sem: double    # standard error of the mean
+        val_ll_mean: double
+        val_ll_sem: double
+        test_ll_mean: double
+        test_ll_sem: double
         tracker_output: attach@external
         eval_output: attach@external
         model: attach@external
