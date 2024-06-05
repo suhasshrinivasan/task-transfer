@@ -13,7 +13,13 @@ flow_prior_configs = OrderedDict(
     flow_initial_nonlin=["inv_softplus"],
     flow_final_nonlin=["none"],
     flow_nonlin=["tanh", "leaky_relu"],
-    flow_base_dist=["normal", "multivariate_normal"],
+    flow_base_dist=[
+        "normal",
+        "multivariate_normal",
+        "lowrank_multivariate_normal_1",
+        "lowrank_multivariate_normal_2",
+        "lowrank_multivariate_normal_10",
+    ],
     affine_type=["factorized", "full"],
 )
 
@@ -28,7 +34,7 @@ FlowPriorConfig.insert(flow_prior_configs_list, skip_duplicates=True)
 trainer_configs = OrderedDict(
     lr=[1e-3],
     weight_decay=[1e-3],
-    n_epochs=[250],
+    n_epochs=[250, 600],
     batch_size=[128],
     early_stopping_threshold=[10],
     early_stopping_patience=[10],
@@ -58,4 +64,8 @@ for values in it.product(*dataloader_configs.values()):
 
 DataLoaderConfig.insert(dataloader_configs_list, skip_duplicates=True)
 
-FlowPriorResult.populate(reserve_jobs=True, order="random")
+FlowPriorResult.populate(
+    reserve_jobs=True,
+    order="random",
+    suppress_errors=True,
+)

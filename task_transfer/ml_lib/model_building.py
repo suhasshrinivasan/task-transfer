@@ -48,6 +48,7 @@ def build_transform_sequence(
         return NotImplementedError("Lowrank not implemented")
     else:
         raise ValueError("Unknown affine type")
+
     for _ in range(depth):
         affine_layer = affine_layer_class(dims)
         initialize_affine_transform_(
@@ -92,6 +93,14 @@ def build_flow_model(
         # loc = torch.nn.Parameter(torch.randn(dims))
         loc = torch.zeros(dims)
         cov = gensn.parameters.Covariance(n_dims=dims)
+        flow_base_distribution = G.TrainableDistributionAdapter(
+            D.MultivariateNormal, loc=loc, covariance_matrix=cov
+        )
+    elif "lowrank_multivariate_normal" in flow_base_distribution:
+        # loc = torch.nn.Parameter(torch.randn(dims))
+        loc = torch.zeros(dims)
+        rank = int(flow_base_distribution.split("_")[-1])
+        cov = gensn.parameters.Covariance(n_dims=dims, rank=rank)
         flow_base_distribution = G.TrainableDistributionAdapter(
             D.MultivariateNormal, loc=loc, covariance_matrix=cov
         )

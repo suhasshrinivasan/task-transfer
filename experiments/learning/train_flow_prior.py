@@ -1,4 +1,4 @@
-from task_transfer.evaluation.evaluate_generative_model import evaluate_flow_prior
+from task_transfer.evaluation.evaluate_generative_model import logl_flow_prior
 from task_transfer.ml_lib.data_loading import build_dataloaders
 from task_transfer.ml_lib.model_building import build_flow_model
 from task_transfer.ml_lib.trainer_building import build_flow_trainer
@@ -48,15 +48,11 @@ def train_flow_prior(data_loader_args, prior_args, trainer_args):
     tracker_output = trainer_output["tracker_output"]
     eval_output = trainer_output["eval_output"]
 
-    train_ll_mean, train_ll_sem = evaluate_flow_prior(
+    train_ll_mean, train_ll_sem = logl_flow_prior(
         flow=flow_model, data_loader=train_loader
     )
-    val_ll_mean, val_ll_sem = evaluate_flow_prior(
-        flow=flow_model, data_loader=val_loader
-    )
-    test_ll_mean, test_ll_sem = evaluate_flow_prior(
-        flow=flow_model, data_loader=val_loader
-    )
+    val_ll_mean, val_ll_sem = logl_flow_prior(flow=flow_model, data_loader=val_loader)
+    test_ll_mean, test_ll_sem = logl_flow_prior(flow=flow_model, data_loader=val_loader)
     return (
         flow_model,
         train_ll_mean,

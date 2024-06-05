@@ -6,7 +6,7 @@ RUN apt-get update
 RUN pip3 install --upgrade pip
 
 ### apt packages
-RUN apt install -y fish graphviz tree tmux
+RUN apt install -y fish graphviz
 
 ### python packages
 # wandb for visualization, pymc for sampling
@@ -16,7 +16,7 @@ RUN pip3 install wandb pymc graphviz datajoint pytest
 RUN pip3 install --upgrade pyparsing
 
 # stable diffusion
-RUN pip3 install --upgrade diffusers transformers scipy
+RUN pip3 install --upgrade diffusers transformers scipy accelerate
 
 ### custom packages
 # gensn for probabilistic machine learning

@@ -139,6 +139,7 @@ class Trainer:
         train_losses = []
         for batch_idx, batch in enumerate(train_loader):
             self.optimizer.zero_grad()
+            batch = [x.to(self.device) for x in batch]
             loss = self.loss_criterion(model, batch).mean()
             loss.backward()
             self.optimizer.step()
@@ -163,6 +164,7 @@ class Trainer:
         val_losses = []
         with torch.no_grad():
             for batch_idx, batch in enumerate(val_loader):
+                batch = [x.to(self.device) for x in batch]
                 loss = self.loss_criterion(model, batch).mean()
                 val_losses.append(loss.item())
                 if batch_idx % 10 == 0:
