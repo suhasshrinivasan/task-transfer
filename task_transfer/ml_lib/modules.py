@@ -168,98 +168,113 @@ class LocScale(nn.Module):
         return loc, scale
 
 
-# DEPRECATED
-# Use LocScale instead, written in a more modular (composable) way
-class LocScaleMLP(nn.Module):
+class ConcRate(nn.Module):
     """
-    A PyTorch module for an MLP-based loc-scale model with customizable number
-    of layers, nonlin, dropout rate, initialization, and non-negative transformation (for scale).
-    This is meant to used to parameterize the loc and scale params of a Normal distribution.
+    A module that predicts conc and rate parameters for a Gamma distribution
+    based on the output of a core neural network.
+
+    Attributes:
+        core_nn (nn.Module): The core neural network whose output is used to predict the conc and rate.
+        init_std (float): Standard deviation for initializing the weights. Default is 1e-3.
+        nonneg_transform (str): Transformation to ensure conc and rate are non-negative. Default is 'exp'.
+        clamp_pre_conc (bool): Whether to clamp the pre-conc values. Default is False.
+        pre_conc_max (float): Maximum value for clamping pre-conc values. Default is 4.0.
+        clamp_pre_rate (bool): Whether to clamp the pre-rate values. Default is False.
+        pre_rate_min (float): Minimum value for clamping pre-rate values. Default is -1.6.
+        conc_module (nn.Linear): Linear layer to predict the conc parameter.
+        rate_module (nn.Linear): Linear layer to predict the rate parameter.
     """
 
     def __init__(
         self,
-        in_features,
-        out_features,
-        n_core_layers=1,
-        nonlin="relu",
-        dropout_rate=0.0,
+        core_nn,
+        out_features_conc,
+        out_features_rate,
         init_std=1e-3,
         nonneg_transform="exp",
-        clamp_pre_scale=False,
-        pre_scale_max=10.0,
+        clamp_pre_conc=False,
+        pre_conc_max=4.0,
+        clamp_pre_rate=False,
+        pre_rate_min=-1.6,
     ):
         """
+        Initializes the ConcRate module with the given parameters.
+
         Args:
-            in_features (int): number of input features
-            out_features (int): number of output features
-            n_core_layers (int): number of layers in the MLP core
-            nonlin (str): nonlin to use in the MLP
-            dropout_rate (float): dropout rate to use in the MLP
-            init_std (float): standard deviation to use for initialization
-            nonneg_transform (str): non-negative transform to use for the scale
-            clamp_pre_conc (bool): whether to clamp the pre-conc values
-            pre_conc_max (float): maximum value for the pre-conc values
+            core_nn (nn.Module): The core neural network whose output is used to predict the conc and rate.
+            out_features_conc (int): Number of output features for the conc parameter.
+            out_features_rate (int): Number of output features for the rate parameter.
+            init_std (float): Standard deviation for initializing the weights. Default is 1e-3.
+            nonneg_transform (str): Transformation to ensure conc and rate are non-negative. Default is 'exp'.
+            clamp_pre_conc (bool): Whether to clamp the pre-conc values. Default is False.
+            pre_conc_max (float): Maximum value for clamping pre-conc values. Default is 4.0.
+            clamp_pre_rate (bool): Whether to clamp the pre-rate values. Default is False.
+            pre_rate_min (float): Minimum value for clamping pre-rate values. Default is -1.6.
 
         Remarks:
-            - The total number of layers in the MLP is n_core_layers
-            - The first n_core_layers - 1 layers are the core layers
-            - The last layer is the loc and pre-scale readout layer
-            - The non-negative transform is applied to pre-scale to get scale
-            - The pre_scale_max is used to up-clamp the pre-scale values if clamp_pre_scale is True
+            - The default value for pre_conc_max is 4.0, chosen such that the exp transform
+                on pre_conc_max is exp(4.0) = 54.6, which is close to the maximum value of
+                neuronal responses observed in the dataset as this module is generally used
+                for modeling response distribution
+            - Similarly, we also do an up-clamp on the pre-rate values such that the rate
+                values are >= 0.2 (which would already be quite a wide gamma distribution), hence
+                default value of pre_rate_min is -1.6 (log(0.2) = -1.6)
         """
         super().__init__()
-        self.in_features = in_features
-        self.out_features = out_features
-        self.n_core_layers = n_core_layers
-        self.nonlin = nonlin
-        self.dropout_rate = dropout_rate
+        self.core_nn = core_nn
+        self.out_features_conc = out_features_conc
+        self.out_features_rate = out_features_rate
         self.init_std = init_std
         self.nonneg_transform = nonneg_transform
-        self.clamp_pre_scale = clamp_pre_scale
-        self.pre_scale_max = pre_scale_max
+        self.clamp_pre_conc = torch.tensor(clamp_pre_conc, dtype=torch.bool)
+        self.pre_conc_max = pre_conc_max
+        self.clamp_pre_rate = torch.tensor(clamp_pre_rate, dtype=torch.bool)
+        self.pre_rate_min = pre_rate_min
 
-        # build the sequential MLP module
-        self.core = MLP(
-            in_features=in_features,
-            out_features=out_features,
-            n_core_layers=self.n_core_layers,
-            nonlin=nonlin,
-            dropout_rate=dropout_rate,
-            init_std=init_std,
-        )
+        self.conc_module = nn.Linear(self.core_nn.out_features, self.out_features_conc)
+        self.rate_module = nn.Linear(self.core_nn.out_features, self.out_features_rate)
 
-        # add the final log conc and log rate readout layers
-        # this will make the total number of layers n_core_layers
-        # extract the hidden features from the core module
-        self.hidden_features = self.core.hidden_features
-        self.loc_module = nn.Linear(self.hidden_features, out_features)
-        self.pre_scale_module = nn.Linear(self.hidden_features, out_features)
-
-        # initialize the weights
         self.init()
 
     def init(self):
+        """
+        Initializes the weights of the ConcRate module using a normal distribution for weights
+        and a constant value for biases.
+        """
         self.apply(prepare_init(self.init_std))
 
     def forward(self, x):
-        core_out = self.core(x)
+        """
+        Defines the forward pass through the ConcRate module.
 
-        loc = self.loc_module(core_out)
-        pre_scale = self.pre_scale_module(core_out)
+        Args:
+            x (torch.Tensor): Input tensor.
 
-        # clamp pre_scale if self.clamp_pre_scale is True
-        pre_scale = (
-            pre_scale.clamp(min=self.pre_scale_min)
-            if self.clamp_pre_scale
-            else pre_scale
+        Returns:
+            tuple: A tuple containing:
+                - conc (torch.Tensor): The predicted conc parameter.
+                - rate (torch.Tensor): The predicted rate parameter.
+        """
+        core_out = self.core_nn(x)
+
+        pre_conc = self.conc_module(core_out)
+        pre_rate = self.rate_module(core_out)
+
+        # Apply clamping if needed using torch.where
+        pre_conc = torch.where(
+            self.clamp_pre_conc, pre_conc.clamp(max=self.pre_conc_max), pre_conc
+        )
+        pre_rate = torch.where(
+            self.clamp_pre_rate, pre_rate.clamp(min=self.pre_rate_min), pre_rate
         )
 
-        # apply the nonzero transforms to get scale
-        scale = nonneg_transforms[self.nonneg_transform](pre_scale)
+        # Apply the nonnegative transforms to get conc and rate
+        conc = nonneg_transforms[self.nonneg_transform](pre_conc)
+        rate = nonneg_transforms[self.nonneg_transform](pre_rate)
 
-        # ensure scale is always positive
-        finfo = torch.finfo(scale.dtype)
-        scale = scale.clamp(min=finfo.eps)
+        # Ensure conc and rate are always positive
+        finfo = torch.finfo(rate.dtype)
+        conc = conc.clamp(min=finfo.eps)
+        rate = rate.clamp(min=finfo.eps)
 
-        return loc, scale
+        return conc, rate
