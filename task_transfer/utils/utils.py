@@ -1,4 +1,5 @@
 import hashlib
+import itertools as it
 from collections import Iterable, Mapping, OrderedDict
 
 
@@ -41,3 +42,54 @@ def make_hash(obj):
         hashed.update(str(obj).encode())
 
     return hashed.hexdigest()
+
+
+def dict_product(d, insert_hash=True):
+    """
+    Generates the cartesian product of a dictionary of lists and returns a list of dictionaries.
+
+    Each dictionary in the resulting list represents a unique combination of the input lists' values.
+    Optionally, a unique hash identifier can be added to each dictionary.
+
+    Args:
+        d (dict): A dictionary where each key maps to a list of values.
+                Example: {'color': ['red', 'blue'], 'size': ['small', 'medium', 'large']}
+        insert_hash (bool): A flag to determine whether to include a unique hash identifier
+                            (keyed by 'id') in each output dictionary. Default is True.
+
+    Returns:
+        list: A list of dictionaries, each representing a unique combination of the input lists' values.
+            If insert_hash is True, each dictionary will include an 'id' key with a unique hash value.
+
+    Example:
+        input_dict = {
+            'color': ['red', 'blue'],
+            'size': ['small', 'medium', 'large']
+        }
+
+        dict_product(input_dict)
+        # Output:
+        # [
+        #     {'color': 'red', 'size': 'small', 'id': 'some_hash'},
+        #     {'color': 'red', 'size': 'medium', 'id': 'some_hash'},
+        #     {'color': 'red', 'size': 'large', 'id': 'some_hash'},
+        #     {'color': 'blue', 'size': 'small', 'id': 'some_hash'},
+        #     {'color': 'blue', 'size': 'medium', 'id': 'some_hash'},
+        #     {'color': 'blue', 'size': 'large', 'id': 'some_hash'}
+        # ]
+
+    Note:
+        The order of keys in the output dictionaries matches the order of keys in the input dictionary.
+    """
+    result = []
+    # Generate the cartesian product of the lists in the dictionary
+    for values in it.product(*d.values()):
+        # Create a dictionary by zipping the keys and the generated values
+        product_dict = {key: value for key, value in zip(d.keys(), values)}
+        # Add a unique identifier hash to the dictionary
+        if insert_hash:
+            product_dict["id"] = make_hash(product_dict)
+        # Append the dictionary to the result list
+        result.append(product_dict)
+
+    return result

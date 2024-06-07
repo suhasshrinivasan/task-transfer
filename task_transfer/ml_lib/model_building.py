@@ -8,7 +8,7 @@ from gensn.distributions import TrainableDistributionAdapter
 from gensn.flow import FlowDistribution
 from gensn.transforms.invertible import Affine, IndependentAffine, SequentialTransform
 
-from .modules import MLP, LocScale
+from .modules import MLP, ConcRate, LocScale
 from .transform_lookup import inv_nonlins
 
 
@@ -156,8 +156,46 @@ def build_loc_scale_mlp(
     )
 
 
+def build_conc_rate_mlp(
+    in_features,
+    out_features_core,
+    out_features_loc,
+    out_features_scale,
+    n_layers,
+    nonlin,
+    dropout_rate,
+    init_std=1e-3,
+    nonneg_transform="exp",
+    clamp_pre_conc=True,
+    pre_conc_max=4.0,
+    clamp_pre_rate=True,
+    pre_rate_min=-1.6,
+):
+    mlp_core = MLP(
+        in_features=in_features,
+        out_features=out_features_core,
+        n_layers=n_layers,
+        nonlin=nonlin,
+        dropout_rate=dropout_rate,
+        init_std=init_std,
+    )
+    return ConcRate(
+        mlp_core,
+        out_features_loc,
+        out_features_scale,
+        init_std=init_std,
+        nonneg_transform=nonneg_transform,
+        clamp_pre_conc=clamp_pre_conc,
+        pre_conc_max=pre_conc_max,
+        clamp_pre_rate=clamp_pre_rate,
+        pre_rate_min=pre_rate_min,
+    )
+
+
 def build_conditional(cond_dist, likelihood):
     if cond_dist == "indep_normal":
         return G.IndependentNormal(_parameters=likelihood)
+    elif cond_dist == "gamma":
+        return G.IndependentGamma(_parameters=likelihood)
     else:
         raise NotImplementedError("Unknown conditional distribution")
