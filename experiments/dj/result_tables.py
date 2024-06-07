@@ -8,12 +8,8 @@ import torch
 from ..learning.train_flow_prior import train_flow_prior
 from ..learning.train_likelihood import train_likelihood
 from ..learning.train_posterior import train_sbvp
-from .dataloader_tables import (
-    DataLoaderConfig,
-    FP_SamplesConfig,
-    MLPCond_SamplesConfig,
-    fetch_samples_path_from_dj,
-)
+from .dataloader_tables import DataLoaderConfig
+from .dj_helpers import fetch_prior_cond_samples_path
 from .likelihood_tables import LikelihoodConfig
 from .posterior_tables import SBVGPConfig
 from .prior_tables import FlowPriorConfig
@@ -226,6 +222,131 @@ class LikelihoodResult(dj.Computed):
 
 
 @schema
+class FPSamplesConfig(dj.Manual):
+    """
+    Table for Flow Prior Samples Configuration
+    """
+
+    definition = """
+    fp_id: char(32)    # from FlowPriorResult
+    dl_id: char(32)    # from FlowPriorResult and DataLoaderConfig
+    trainer_id: char(32)    # from FlowPriorResult and FPTrainerConfig
+    seed: int
+    n_samples: int
+    """
+
+
+@schema
+class FPSamples(dj.Computed):
+    """
+    Table for Flow Prior Samples
+    """
+
+    definition = """
+    -> FPSamplesConfig
+    ---
+    samples: attach@external
+    """
+
+    def make(self, key):
+        # Print the provided key
+        print("Received key ->", key)
+
+        # set the seed
+        torch.manual_seed(key["seed"])
+
+        # Fetch and prepare args
+        print("Fetching FlowPriorResult arguments...")
+        model_path = (FlowPriorResult & {"id": key["fp_id"]}).fetch1(
+            download_path="/tmp"
+        )["model"]
+
+        # Load the model
+        print("Loading model...")
+        model = torch.load(model_path)
+        model.eval()
+        print("Model loaded.")
+
+        # Generate samples
+        print("Generating samples...")
+        samples = model.sample(key["n_samples"])
+        print("Samples generated.")
+
+        print("Saving samples...")
+        with tempfile.TemporaryDirectory() as tmp_dir:
+            # Save samples
+            samples_fname = (
+                f"{tmp_dir}/prior_{key['fp_id']}_{key['seed']}_{key['n_samples']}.pt"
+            )
+            torch.save(samples, samples_fname)
+            key["samples"] = samples_fname
+            self.insert1(key)
+
+        print("Samples saved.")
+
+
+@schema
+class MLPCondSamplesConfig(dj.Manual):
+    """
+    Table for MLP Samples Configuration
+    """
+
+    definition = """
+    ll_id: char(32)    # from LikelihoodResult
+    """
+
+
+@schema
+class MLPCondSamples(dj.Computed):
+    definition = """
+    -> FPSamplesConfig
+    -> MLPCondSamplesConfig
+    ---
+    samples: attach@external
+    """
+
+    def make(self, key):
+        # Print the provided key
+        print("Received key ->", key)
+
+        # Set the seed
+        torch.manual_seed(key["seed"])
+
+        # First fetch prior samples
+        print("Fetching prior samples...")
+        with tempfile.TemporaryDirectory() as tmp_dir:
+            prior_samples_path = (
+                FPSamples & {"fp_id": key["fp_id"], "seed": key["seed"]}
+            ).fetch1(download_path=tmp_dir)["samples"]
+            prior_samples = torch.load(prior_samples_path)
+
+            # Now fetch the likelihood model
+            print("Fetching likelihood model...")
+            likelihood_model_path = (
+                LikelihoodResult & {"id": key["likelihood_id"]}
+            ).fetch1(download_path=tmp_dir)["model"]
+
+            # Load the likelihood model
+            print("Loading likelihood model...")
+            likelihood_model = torch.load(likelihood_model_path)
+
+            # Generate conditional samples
+            print("Generating conditional samples...")
+            samples = likelihood_model.sample(cond=prior_samples)
+            print("Samples generated.")
+
+            print("Saving samples...")
+            # Save samples
+            samples_fname = (
+                f"{tmp_dir}/cond_samples_{key['likelihood_id']}_{key['seed']}.pt"
+            )
+            torch.save(samples, samples_fname)
+
+            key["samples"] = samples_fname
+            self.insert1(key)
+
+
+@schema
 class SBVGPResult(dj.Computed):
     """
     Result table for the Sample Based Variational Gamma Posterior
@@ -234,8 +355,8 @@ class SBVGPResult(dj.Computed):
     definition = """
     -> SBVGPConfig.proj(sbvp_id='id')
     -> SBVGPTrainerConfig.proj(trainer_id='id')
-    -> FP_SamplesConfig.proj(fp_samples_id='id')
-    -> MLPCond_SamplesConfig.proj(mlpcond_samples_id='id')
+    -> FPSamplesConfig.proj(fp_samples_id='fp_id')
+    -> MLPCondSamplesConfig.proj(mlpcond_samples_id='ll_id')
     ---
     train_ll_mean: double    # mean per dimension, per sample, in nats
     train_ll_sem: double    # standard error of the mean
@@ -263,13 +384,13 @@ class SBVGPResult(dj.Computed):
         posterior_args["dist"] = "gamma"
         posterior_args.pop("id")
 
-        # get the FP_Samples and MLPCond_Samples keys
-        FP_Samples_key = (FP_SamplesConfig & {"id": key["fp_samples_id"]}).fetch1()
-        MLPCond_Samples_key = (
-            MLPCond_SamplesConfig & {"id": key["mlpcond_samples_id"]}
+        # get the FPSamples and MLPCondSamples keys
+        FPSamples_key = (FPSamplesConfig & {"id": key["fp_samples_id"]}).fetch1()
+        MLPCondSamples_key = (
+            MLPCondSamplesConfig & {"id": key["mlpcond_samples_id"]}
         ).fetch1()
-        prior_samples_path, cond_samples_path = fetch_samples_path_from_dj(
-            FP_Samples_key, MLPCond_Samples_key
+        prior_samples_path, cond_samples_path = fetch_prior_cond_samples_path(
+            FPSamples, FPSamples_key, MLPCondSamples, MLPCondSamples_key
         )
 
         # get data_loader args
