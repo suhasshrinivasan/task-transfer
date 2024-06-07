@@ -139,7 +139,7 @@ def build_generative_model(model_cfg):
         cond_dist=model_cfg["likelihood"]["cond_dist"],
         likelihood=likelihood,
     )
-    conditional = G.IndependentNormal(_parameters=likelihood)
+    # conditional = G.IndependentNormal(_parameters=likelihood)
     joint = G.Joint(prior, conditional)
     return joint
 

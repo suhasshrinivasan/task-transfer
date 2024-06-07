@@ -1,18 +1,16 @@
 import datajoint as dj
-from schema import schema
+
+from .schema import schema
 
 
 @schema
 class LikelihoodConfig(dj.Manual):
     definition = """
-    ll_id: char(32)
+    id: char(32)
     ---
+    seed: int
     cond_dist: varchar(32)
     nonneg_transform: varchar(32)
-    in_features: int
-    out_features_core: int
-    out_features_loc: int
-    out_features_scale: int
     n_layers: int
     nonlin: varchar(32)
     dropout_rate: float
