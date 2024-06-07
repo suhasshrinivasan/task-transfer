@@ -8,6 +8,26 @@ from matplotlib.colors import ListedColormap, TwoSlopeNorm
 from scipy.stats import kendalltau, pearsonr, spearmanr
 
 
+def logl_conditional(
+    model,
+    data_loader,
+    data_dim,
+    cond_dim,
+    device="cpu",
+):
+    log_probs = []
+    with torch.no_grad():
+        model.eval()
+        model = model.to(device)
+        for batch in data_loader:
+            data = batch[data_dim].to(device)
+            cond = batch[cond_dim].to(device)
+            log_probs.append(model(data, cond=cond))
+        mean_log_prob = torch.cat(log_probs).mean()
+        sem_log_prob = torch.cat(log_probs).std() / (len(log_probs) ** 0.5)
+    return mean_log_prob.item(), sem_log_prob.item()
+
+
 def logl_flow_prior(
     flow,
     data_loader,
