@@ -57,7 +57,7 @@ class Trainer:
         self.logger = logger
         self.device = device
 
-    def train(self, model, train_loader, val_loader, n_epochs):
+    def train(self, model, train_loader, val_loader, n_epochs, watch_grad_norm=False):
         """
         Trains the model and applies early stopping if validation loss does not improve.
 
@@ -70,13 +70,15 @@ class Trainer:
         Returns:
             torch.nn.Module: The best model based on validation loss.
         """
+        # if watch_grad_norm:
+        #     torch.autograd.set_detect_anomaly(True)  # TODO: Debugging code. cleanup
         train_losses = []
         val_losses = []
         eval_output = None
         for epoch in range(n_epochs):
             if (self.eval_criterion is not None) and (epoch % self.eval_interval == 0):
                 eval_output = self._eval(model, val_loader, epoch)
-            train_loss = self._train(model, train_loader, epoch)
+            train_loss = self._train(model, train_loader, epoch, watch_grad_norm)
             train_losses.append(train_loss)
             val_loss = self._val(model, val_loader, epoch)
             val_losses.append(val_loss)
@@ -122,7 +124,7 @@ class Trainer:
             "eval_output": eval_output,
         }
 
-    def _train(self, model, train_loader, epoch):
+    def _train(self, model, train_loader, epoch, watch_grad_norm=False):
         """
         Performs one training epoch.
 
@@ -130,6 +132,7 @@ class Trainer:
             model (torch.nn.Module): The model to be trained.
             train_loader (torch.utils.data.DataLoader): DataLoader for training data.
             epoch (int): Current epoch number.
+            watch_grad_norm (bool): Whether to log the gradient norm.
 
         Returns:
             float: Mean training loss for the epoch.
@@ -142,8 +145,22 @@ class Trainer:
             batch = [x.to(self.device) for x in batch]
             loss = self.loss_criterion(model, batch).mean()
             loss.backward()
-            self.optimizer.step()
+            # TODO: watch grad norm code is commented out. Uncomment if necessary
+            # if watch_grad_norm:
+            #     grad_norm = torch.norm(
+            #         torch.cat([p.grad.flatten() for p in model.parameters()])
+            #     ).item()
+            #     self.logger.log(
+            #         {"grad_norm": grad_norm},
+            #         f"Train Epoch: {epoch + 1}, Batch: {batch_idx + 1}/{len(train_loader)}",
+            #     )
             train_losses.append(loss.item())
+            self.optimizer.step()
+            # TODO: log metrics every batch if necessary otherwise it'll cause a significant slowdown
+            # metrics = {"train_batch_loss": loss.item()}
+            # self.logger.log(
+            #     metrics, f"Train Epoch: {epoch + 1} {batch_idx + 1}/{len(train_loader)}"
+            # )
             if batch_idx % 10 == 0:
                 print(f"Train Epoch: {epoch + 1} {batch_idx + 1}/{len(train_loader)}")
         return np.mean(train_losses)
@@ -167,6 +184,11 @@ class Trainer:
                 batch = [x.to(self.device) for x in batch]
                 loss = self.loss_criterion(model, batch).mean()
                 val_losses.append(loss.item())
+                # TODO: log metrics every batch if necessary otherwise it'll cause a significant slowdown
+                # metrics = {"val_batch_loss": loss.item()}
+                # self.logger.log(
+                #     metrics, f"Val Epoch: {epoch + 1} {batch_idx + 1}/{len(val_loader)}"
+                # )
                 if batch_idx % 10 == 0:
                     print(f"Val Epoch: {epoch + 1} {batch_idx + 1}/{len(val_loader)}")
         return np.mean(val_losses)

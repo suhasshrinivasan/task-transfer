@@ -7,11 +7,11 @@ from experiments.dj.posterior_tables import SBVGPConfig
 from experiments.dj.prior_tables import FlowPriorConfig
 from experiments.dj.result_tables import (
     FlowPriorResult,
-    FP_Samples,
-    FP_SamplesConfig,
+    FPSamples,
+    FPSamplesConfig,
     LikelihoodResult,
-    MLPCond_Samples,
-    MLPCond_SamplesConfig,
+    MLPCondSamples,
+    MLPCondSamplesConfig,
     SBVGPResult,
 )
 from experiments.dj.trainer_tables import (
@@ -55,22 +55,22 @@ fp_samples_configs = OrderedDict(
     fp_id=[best_val_prior_results["fp_id"]],
     dl_id=[best_val_prior_results["dl_id"]],
     trainer_id=[best_val_prior_results["trainer_id"]],
-    n_samples=[100_000],
+    n_samples=[10_000],
     seed=[42],
 )
 
-fp_samples_configs_list = dict_product(fp_samples_configs, insert_hash=True)
+fp_samples_configs_list = dict_product(fp_samples_configs, insert_hash=False)
 
-FP_SamplesConfig.insert(fp_samples_configs_list, skip_duplicates=True)
-FP_Samples.populate(reserve_jobs=True, suppress_errors=True, order="random")
+FPSamplesConfig.insert(fp_samples_configs_list, skip_duplicates=True)
+FPSamples.populate(reserve_jobs=True, suppress_errors=True, order="random")
 
 mlpcond_samples_configs = OrderedDict(
     ll_id=[best_val_likelihood_results["ll_id"]],
 )
-mlpcond_samples_configs_list = dict_product(mlpcond_samples_configs, insert_hash=True)
+mlpcond_samples_configs_list = dict_product(mlpcond_samples_configs, insert_hash=False)
 
-MLPCond_SamplesConfig.insert(mlpcond_samples_configs_list, skip_duplicates=True)
-MLPCond_Samples.populate(reserve_jobs=True, suppress_errors=True, order="random")
+MLPCondSamplesConfig.insert(mlpcond_samples_configs_list, skip_duplicates=True)
+MLPCondSamples.populate(reserve_jobs=True, suppress_errors=True, order="random")
 
 
 posterior_configs = OrderedDict(
@@ -97,7 +97,7 @@ SBVGPConfig.insert(posterior_configs_list, skip_duplicates=True)
 trainer_configs = OrderedDict(
     lr=[1e-3],
     weight_decay=[1e-3],
-    n_epochs=[250],
+    n_epochs=[2],
     batch_size=[128],
     early_stopping_threshold=[10],
     early_stopping_patience=[10],
@@ -106,5 +106,7 @@ trainer_configs = OrderedDict(
 trainer_configs_list = dict_product(trainer_configs, insert_hash=True)
 
 SBVGPTrainerConfig.insert(trainer_configs_list, skip_duplicates=True)
-
+SBVGPResult.USE_WANDB = True
+SBVGPResult.FORCE_GPU = True
 SBVGPResult.populate(reserve_jobs=True, suppress_errors=True, order="random")
+# SBVGPResult.populate(order="original", limit=1)

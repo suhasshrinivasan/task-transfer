@@ -1,3 +1,8 @@
+import torch
+
+import wandb
+
+
 def joint_nll(model, batch):
     """
     Computes the negative log-likelihood of the batch of data using the joint model.
@@ -44,4 +49,12 @@ def conditional_nll(model, batch, data_dim, cond_dim):
     """
     data = batch[data_dim]
     cond = batch[cond_dim]
-    return -model(data, cond=cond)
+    # TODO: debug code. cleanup
+    # data_hist = wandb.Histogram(data.detach().cpu())
+    # cond_hist = wandb.Histogram(cond.detach().cpu())
+    # wandb.log({"data/hist": data_hist, "cond/hist": cond_hist})
+    # wandb.log({"data/min": data.min(), "data/max": data.max()})
+    # wandb.log({"cond/min": cond.min(), "cond/max": cond.max()})
+    data = data + torch.finfo(data.dtype).eps
+    nll = -model(data, cond=cond)
+    return nll

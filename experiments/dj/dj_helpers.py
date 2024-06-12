@@ -22,7 +22,9 @@ def fetch_prior_cond_samples_path(prior_table, prior_key, cond_table, cond_key):
     ]
 
     # Fetch the conditional sample path based on the cond_key
-    cond_samples_path = (cond_table & cond_key).fetch1(download_path="/tmp")["samples"]
+    cond_samples_path = (cond_table & {**cond_key, **prior_key}).fetch1(
+        download_path="/tmp"
+    )["samples"]
 
     return prior_samples_path, cond_samples_path
 
@@ -94,3 +96,7 @@ def fetch_best_model_results(
         ret = best_val_results
 
     return ret
+
+
+def drop_schema_dot_jobs(schema):
+    schema.jobs.drop()

@@ -1,6 +1,8 @@
 import torch
 from torch import nn
 
+import wandb
+
 from .routines import prepare_init
 from .transform_lookup import nonlins, nonneg_transforms
 
@@ -54,14 +56,15 @@ class MLP(nn.Module):
             if n_layers == 1:
                 self.hidden_features = out_features
             else:
-                self.hidden_features = (in_features + out_features) // 2
+                # TODO: parameterize hidden_features
+                self.hidden_features = out_features
             self.core_module.add_module(
                 "linear_0", nn.Linear(in_features, self.hidden_features)
             )
             # add dropout after each nn.Linear
             self.core_module.add_module("dropout_0", nn.Dropout(dropout_rate))
             self.core_module.add_module("nonlin_0", nonlins[nonlin]())
-            for i in range(1, n_layers):
+            for i in range(1, n_layers - 1):
                 self.core_module.add_module(
                     f"linear_{i}", nn.Linear(self.hidden_features, self.hidden_features)
                 )
@@ -253,12 +256,18 @@ class ConcRate(nn.Module):
         Returns:
             tuple: A tuple containing:
                 - conc (torch.Tensor): The predicted conc parameter.
-                - rate (torch.Tensor): The predicted rate parameter.
+            - rate (torch.Tensor): The predicted rate parameter.
         """
         core_out = self.core_nn(x)
+        # # TODO: debug code. cleanup
+        # core_out_hist = wandb.Histogram(core_out.detach().cpu())
 
         pre_conc = self.conc_module(core_out)
         pre_rate = self.rate_module(core_out)
+
+        # # TODO: debug code. cleanup
+        # pre_conc_pre_clamp_hist = wandb.Histogram(pre_conc.detach().cpu())
+        # pre_rate_pre_clamp_hist = wandb.Histogram(pre_rate.detach().cpu())
 
         # Apply clamping if needed using torch.where
         pre_conc = torch.where(
@@ -268,13 +277,39 @@ class ConcRate(nn.Module):
             self.clamp_pre_rate, pre_rate.clamp(min=self.pre_rate_min), pre_rate
         )
 
+        # # TODO: debug code. cleanup
+        # pre_conc_post_clamp_hist = wandb.Histogram(pre_conc.detach().cpu())
+        # pre_rate_post_clamp_hist = wandb.Histogram(pre_rate.detach().cpu())
+
         # Apply the nonnegative transforms to get conc and rate
         conc = nonneg_transforms[self.nonneg_transform](pre_conc)
         rate = nonneg_transforms[self.nonneg_transform](pre_rate)
+
+        # # TODO: debug code. cleanup
+        # conc_pre_clamp_hist = wandb.Histogram(conc.detach().cpu())
+        # rate_pre_clamp_hist = wandb.Histogram(rate.detach().cpu())
 
         # Ensure conc and rate are always positive
         finfo = torch.finfo(rate.dtype)
         conc = conc.clamp(min=finfo.eps)
         rate = rate.clamp(min=finfo.eps)
+
+        # # TODO: debug code. cleanup
+        # conc_post_clamp_hist = wandb.Histogram(conc.detach().cpu())
+        # rate_post_clamp_hist = wandb.Histogram(rate.detach().cpu())
+
+        # wandb.log(
+        #     {
+        #         "core_out_hist": core_out_hist,
+        #         "pre_conc_pre_clamp_hist": pre_conc_pre_clamp_hist,
+        #         "pre_rate_pre_clamp_hist": pre_rate_pre_clamp_hist,
+        #         "pre_conc_post_clamp_hist": pre_conc_post_clamp_hist,
+        #         "pre_rate_post_clamp_hist": pre_rate_post_clamp_hist,
+        #         "conc_pre_clamp_hist": conc_pre_clamp_hist,
+        #         "rate_pre_clamp_hist": rate_pre_clamp_hist,
+        #         "conc_post_clamp_hist": conc_post_clamp_hist,
+        #         "rate_post_clamp_hist": rate_post_clamp_hist,
+        #     }
+        # )
 
         return conc, rate

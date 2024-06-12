@@ -1,21 +1,38 @@
+import torch
+
+import wandb
 from task_transfer.evaluation.evaluate_generative_model import logl_conditional
-from task_transfer.ml_lib.data_loading import build_dataloaders_from_samples_paths
+from task_transfer.ml_lib.data_loading import (
+    build_dataloaders,
+    build_dataloaders_from_samples_paths,
+)
 from task_transfer.ml_lib.model_building import build_conc_rate_mlp, build_conditional
 from task_transfer.ml_lib.trainer_building import build_conditional_trainer
 
 
-def train_sbvp(data_loader_args, posterior_args, trainer_args):
+def train_sbvp(data_loader_args, posterior_args, trainer_args, use_wandb=False):
+    if use_wandb:
+        wandb_run = wandb.init(
+            project="task_transfer_train_sbvp",
+            entity="walkerlab",
+            config={**data_loader_args, **posterior_args, **trainer_args},
+        )
+
     # get the FP_Samples and MLPCond_Samples dataloaders
-    train_loader, val_loader, test_loader = build_dataloaders_from_samples_paths(
-        response_samples_path=data_loader_args["response_samples_path"],
-        obs_samples_path=data_loader_args["obs_samples_path"],
-        train_prop=data_loader_args["train_prop"],
-        val_prop=data_loader_args["val_prop"],
-        batch_size=data_loader_args["batch_size"],
-        seed=data_loader_args["seed"],
+    samples_train_loader, samples_val_loader, samples_test_loader = (
+        build_dataloaders_from_samples_paths(
+            response_samples_path=data_loader_args["sampled_responses_path"],
+            obs_samples_path=data_loader_args["sampled_obs_path"],
+            train_prop=data_loader_args["train_prop"],
+            val_prop=data_loader_args["val_prop"],
+            batch_size=trainer_args["batch_size"],
+            seed=data_loader_args["data_seed"],
+        )
     )
 
-    response_sample, image_sample = next(iter(train_loader))
+    response_sample, image_sample = next(iter(samples_train_loader))
+
+    torch.manual_seed(posterior_args["seed"])
     if posterior_args["dist"] == "gamma":
         amortization_fn = build_conc_rate_mlp(
             in_features=image_sample.shape[1],
@@ -51,47 +68,95 @@ def train_sbvp(data_loader_args, posterior_args, trainer_args):
         eval_criterion=None,
         eval_interval=None,
         eval_params=None,
-        logging_type="stdout",
+        logging_type="wandb" if use_wandb else "stdout",
+        device=trainer_args["device"],
     )
+
+    # if use_wandb:
+    #     wandb.watch(model, log="all", log_freq=100)
 
     trainer_output = trainer.train(
         model=model,
-        train_loader=train_loader,
-        val_loader=val_loader,
+        train_loader=samples_train_loader,
+        val_loader=samples_val_loader,
         n_epochs=trainer_args["n_epochs"],
+        # watch_grad_norm=True,  # TODO: debug code. cleanup
     )
     tracker_output = trainer_output["tracker_output"]
     eval_output = trainer_output["eval_output"]
 
-    train_ll_mean, train_ll_sem = logl_conditional(
-        model=model,
-        data_loader=train_loader,
-        data_dim=image_dim,
-        cond_dim=response_dim,
-        device=trainer.device,
+    with torch.no_grad():
+        model.eval()
+        train_ll_mean_sample, train_ll_sem_sample = logl_conditional(
+            model=model,
+            data_loader=samples_train_loader,
+            data_dim=image_dim,
+            cond_dim=response_dim,
+            device=trainer.device,
+        )
+        val_ll_mean_sample, val_ll_sem_sample = logl_conditional(
+            model=model,
+            data_loader=samples_val_loader,
+            data_dim=image_dim,
+            cond_dim=response_dim,
+            device=trainer.device,
+        )
+        test_ll_mean_sample, test_ll_sem_sample = logl_conditional(
+            model=model,
+            data_loader=samples_test_loader,
+            data_dim=image_dim,
+            cond_dim=response_dim,
+            device=trainer.device,
+        )
+
+    # also evaluate on real data
+    # first load the real data
+    # it's important to do this here since we do not want to train the model on real data
+    # loading the real data here provides a safeguard against accidentally training on real data
+    real_train_loader, real_val_loader, real_test_loader = build_dataloaders(
+        data_loader_args["data_fname"],
+        data_loader_args["train_prop"],
+        data_loader_args["val_prop"],
+        trainer_args["batch_size"],
     )
-    val_ll_mean, val_ll_sem = logl_conditional(
-        model=model,
-        data_loader=val_loader,
-        data_dim=image_dim,
-        cond_dim=response_dim,
-        device=trainer.device,
-    )
-    test_ll_mean, test_ll_sem = logl_conditional(
-        model=model,
-        data_loader=test_loader,
-        data_dim=image_dim,
-        cond_dim=response_dim,
-        device=trainer.device,
-    )
+    # now evaluate the model on the real data
+    with torch.no_grad():
+        model.eval()
+        train_ll_mean_real, train_ll_sem_real = logl_conditional(
+            model=model,
+            data_loader=real_train_loader,
+            data_dim=image_dim,
+            cond_dim=response_dim,
+            device=trainer.device,
+        )
+        val_ll_mean_real, val_ll_sem_real = logl_conditional(
+            model=model,
+            data_loader=real_val_loader,
+            data_dim=image_dim,
+            cond_dim=response_dim,
+            device=trainer.device,
+        )
+        test_ll_mean_real, test_ll_sem_real = logl_conditional(
+            model=model,
+            data_loader=real_test_loader,
+            data_dim=image_dim,
+            cond_dim=response_dim,
+            device=trainer.device,
+        )
     return (
         model,
-        train_ll_mean,
-        train_ll_sem,
-        val_ll_mean,
-        val_ll_sem,
-        test_ll_mean,
-        test_ll_sem,
+        train_ll_mean_real,
+        train_ll_sem_real,
+        val_ll_mean_real,
+        val_ll_sem_real,
+        test_ll_mean_real,
+        test_ll_sem_real,
+        train_ll_mean_sample,
+        train_ll_sem_sample,
+        val_ll_mean_sample,
+        val_ll_sem_sample,
+        test_ll_mean_sample,
+        test_ll_sem_sample,
         tracker_output,
         eval_output,
     )

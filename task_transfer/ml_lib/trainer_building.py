@@ -68,6 +68,7 @@ def build_conditional_trainer(
     early_stopping_threshold,
     early_stopping_patience,
     logging_type,
+    device,
 ):
     """
     Build the trainer for the likelihood model.
@@ -93,7 +94,6 @@ def build_conditional_trainer(
         model_display_name="Likelihood",
         logging_type=logging_type,
     )
-    device = "cuda" if torch.cuda.is_available() else "cpu"
     trainer = Trainer(
         loss_criterion=loss_criterion,
         eval_criterion=eval_criterion,

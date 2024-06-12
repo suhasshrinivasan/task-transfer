@@ -16,7 +16,7 @@ RUN pip3 install wandb pymc graphviz datajoint pytest
 RUN pip3 install --upgrade pyparsing
 
 # stable diffusion
-RUN pip3 install --upgrade diffusers transformers scipy accelerate
+RUN pip3 install --upgrade diffusers transformers scipy accelerate wandb
 
 ### custom packages
 # gensn for probabilistic machine learning

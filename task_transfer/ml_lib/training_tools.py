@@ -1,4 +1,5 @@
 import numpy as np
+
 import wandb
 
 from .routines import copy_model_state
@@ -78,7 +79,7 @@ class TrainLogger:
         log(metrics, count_phrase): Logs the provided metrics.
     """
 
-    def __init__(self, model_display_name, logging_type="wandb"):
+    def __init__(self, model_display_name, logging_type):
         """
         Initializes the TrainLogger with the given parameters.
 
@@ -117,3 +118,18 @@ class TrainLogger:
             print(f"{count_phrase}:\n {metrics}")
         else:
             raise ValueError("logging_type must be one of 'wandb' or 'stdout'")
+
+
+def setup_wandb(**kwargs):
+    """
+    Call wandb init and watch with the provided arguments.
+
+    Args:
+        **kwargs: Keyword arguments to pass to wandb.init() and wandb.watch().
+
+    Returns:
+        None
+    """
+    wandb_run = wandb.init(**kwargs["init"])
+    wandb.watch(**kwargs["watch"])
+    return wandb_run
