@@ -90,6 +90,7 @@ posterior_configs = OrderedDict(
     ],
 )
 
+
 posterior_configs_list = dict_product(posterior_configs, insert_hash=True)
 
 SBVGPConfig.insert(posterior_configs_list, skip_duplicates=True)
@@ -97,7 +98,7 @@ SBVGPConfig.insert(posterior_configs_list, skip_duplicates=True)
 trainer_configs = OrderedDict(
     lr=[1e-3],
     weight_decay=[1e-3],
-    n_epochs=[2],
+    n_epochs=[250],
     batch_size=[128],
     early_stopping_threshold=[10],
     early_stopping_patience=[10],

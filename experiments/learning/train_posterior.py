@@ -90,22 +90,22 @@ def train_sbvp(data_loader_args, posterior_args, trainer_args, use_wandb=False):
         train_ll_mean_sample, train_ll_sem_sample = logl_conditional(
             model=model,
             data_loader=samples_train_loader,
-            data_dim=image_dim,
-            cond_dim=response_dim,
+            data_dim=response_dim,
+            cond_dim=image_dim,
             device=trainer.device,
         )
         val_ll_mean_sample, val_ll_sem_sample = logl_conditional(
             model=model,
             data_loader=samples_val_loader,
-            data_dim=image_dim,
-            cond_dim=response_dim,
+            data_dim=response_dim,
+            cond_dim=image_dim,
             device=trainer.device,
         )
         test_ll_mean_sample, test_ll_sem_sample = logl_conditional(
             model=model,
             data_loader=samples_test_loader,
-            data_dim=image_dim,
-            cond_dim=response_dim,
+            data_dim=response_dim,
+            cond_dim=image_dim,
             device=trainer.device,
         )
 
@@ -125,22 +125,22 @@ def train_sbvp(data_loader_args, posterior_args, trainer_args, use_wandb=False):
         train_ll_mean_real, train_ll_sem_real = logl_conditional(
             model=model,
             data_loader=real_train_loader,
-            data_dim=image_dim,
-            cond_dim=response_dim,
+            data_dim=response_dim,
+            cond_dim=image_dim,
             device=trainer.device,
         )
         val_ll_mean_real, val_ll_sem_real = logl_conditional(
             model=model,
             data_loader=real_val_loader,
-            data_dim=image_dim,
-            cond_dim=response_dim,
+            data_dim=response_dim,
+            cond_dim=image_dim,
             device=trainer.device,
         )
         test_ll_mean_real, test_ll_sem_real = logl_conditional(
             model=model,
             data_loader=real_test_loader,
-            data_dim=image_dim,
-            cond_dim=response_dim,
+            data_dim=response_dim,
+            cond_dim=image_dim,
             device=trainer.device,
         )
     return (

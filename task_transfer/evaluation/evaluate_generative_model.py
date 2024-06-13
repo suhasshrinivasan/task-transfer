@@ -7,6 +7,8 @@ import torch
 from matplotlib.colors import ListedColormap, TwoSlopeNorm
 from scipy.stats import kendalltau, pearsonr, spearmanr
 
+from ..ml_lib.loss_criteria import conditional_nll, joint_nll, marginal_nll
+
 
 def logl_conditional(
     model,
@@ -20,9 +22,9 @@ def logl_conditional(
         model.eval()
         model = model.to(device)
         for batch in data_loader:
-            data = batch[data_dim].to(device)
-            cond = batch[cond_dim].to(device)
-            log_probs.append(model(data, cond=cond))
+            batch = [b.to(device) for b in batch]
+            log_prob = -conditional_nll(model, batch, data_dim, cond_dim)
+            log_probs.append(log_prob)
         mean_log_prob = torch.cat(log_probs).mean()
         sem_log_prob = torch.cat(log_probs).std() / (len(log_probs) ** 0.5)
     return mean_log_prob.item(), sem_log_prob.item()

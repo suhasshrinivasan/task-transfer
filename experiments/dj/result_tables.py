@@ -373,7 +373,7 @@ class SBVGPResult(dj.Computed):
 
     definition = """
     -> SBVGPConfig.proj(sbvp_id='id')
-    -> SBVGPTrainerConfig.proj(trainer_id='id')
+    -> SBVGPTrainerConfig.proj(sbvp_trainer_id='id')
     -> FPSamplesConfig.proj(fp_samples_id='fp_id', data_seed='seed')
     -> MLPCondSamplesConfig.proj(mlpcond_samples_id='ll_id')
     ---
@@ -428,7 +428,7 @@ class SBVGPResult(dj.Computed):
         data_loader_args["data_seed"] = key["data_seed"]
 
         # get trainer args
-        trainer_args = (SBVGPTrainerConfig & {"id": key["trainer_id"]}).fetch1()
+        trainer_args = (SBVGPTrainerConfig & {"id": key["sbvp_trainer_id"]}).fetch1()
 
         if self.FORCE_GPU:
             if torch.cuda.is_available():
