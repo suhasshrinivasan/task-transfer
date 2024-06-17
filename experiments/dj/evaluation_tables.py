@@ -1,14 +1,19 @@
 import pickle
+import tempfile
 from pathlib import Path
 
 import datajoint as dj
 import torch
 
-from task_transfer.evaluation.evaluate_generative_model import evaluate_flow_prior
+from task_transfer.evaluation.evaluate_generative_model import (
+    evaluate_flow_prior,
+    logl_conditional,
+)
 from task_transfer.ml_lib.data_loading import build_dataloaders
 
+from ..learning.evaluate_model import evaluate_predictive_model
 from .dataloader_tables import DataLoaderConfig
-from .result_tables import FlowPriorResult
+from .result_tables import FlowPriorResult, SIResult
 from .schema import schema
 
 
@@ -238,3 +243,99 @@ class FlowPriorEval(dj.Computed):
         # free up memory
         Path(flow_path).unlink()
         print("Evaluation complete")
+
+
+@schema
+class EvalDatasets(dj.Lookup):
+    """
+    This table is used evaluation datasets for the predictive models.
+    At the moment we have the datasets as a list here.
+    """
+
+    definition = """
+    data_fname: varchar(255)
+    """
+    contents = [
+        "/src/project/data/synthetic/haefner_2afc/original_haefner_2afc_task_2_dataset.pkl",
+    ]
+
+
+@schema
+class SIEval(dj.Computed):
+    """
+    Evaluate .result_tables.SIResult models on a given dataset from EvalDatasets
+    """
+
+    definition = """
+    -> SIResult
+    -> EvalDatasets
+    ---
+    train_ll_mean: double    # mean per dimension, per sample, in nats
+    train_ll_sem: double    # standard error of the mean
+    val_ll_mean: double
+    val_ll_sem: double
+    test_ll_mean: double
+    test_ll_sem: double
+    """
+
+    FORCE_GPU = False
+
+    def make(self, key):
+        (
+            key["train_ll_mean"],
+            key["train_ll_sem"],
+            key["val_ll_mean"],
+            key["val_ll_sem"],
+            key["test_ll_mean"],
+            key["test_ll_sem"],
+        ) = dj_load_model_data_and_evaluate(self, key)
+        self.insert1(key)
+
+
+@schema
+class SBVGPEval(dj.Computed):
+    """
+    Evaluate .result_tables.SBVGPResult models on a given dataset from EvalDatasets
+    """
+
+    FORCE_GPU = False
+
+    definition = """
+    -> SBVGPResult
+    -> EvalDatasets
+    ---
+    train_ll_mean: double    # mean per dimension, per sample, in nats
+    train_ll_sem: double    # standard error of the mean
+    val_ll_mean: double
+    val_ll_sem: double
+    test_ll_mean: double
+    test_ll_sem: double
+    """
+
+    def make(self, key):
+        (
+            key["train_ll_mean"],
+            key["train_ll_sem"],
+            key["val_ll_mean"],
+            key["val_ll_sem"],
+            key["test_ll_mean"],
+            key["test_ll_sem"],
+        ) = dj_load_model_data_and_evaluate(self, key)
+        self.insert1(key)
+
+
+def dj_load_model_data_and_evaluate(self, key):
+    if 
+    args = (self & key).fetch1()
+    model_args = {k: v for k, v in args.items() if k not in ["data_fname"]}
+    dataloader_args = {
+        "data_fname": args["data_fname"],
+        "train_prop": 0.7,
+        "val_prop": 0.2,
+        "batch_size": 128,  # these are hardcoded since they don't matter for evaluation
+    }
+    if self.FORCE_GPU:
+        device = "cuda"
+    else:
+        device = "cpu"
+    return evaluate_predictive_model(model_args, dataloader_args, device)
