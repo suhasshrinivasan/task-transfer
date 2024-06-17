@@ -10,13 +10,20 @@ from task_transfer.utils.utils import make_hash
 from ..learning.train_flow_prior import train_flow_prior
 from ..learning.train_likelihood import train_likelihood
 from ..learning.train_posterior import train_sbvp
+from ..learning.train_sysident import train_sysident
 from .dataloader_tables import DataLoaderConfig
 from .dj_helpers import fetch_prior_cond_samples_path
 from .likelihood_tables import LikelihoodConfig
 from .posterior_tables import SBVGPConfig
 from .prior_tables import FlowPriorConfig
 from .schema import schema
-from .trainer_tables import FPTrainerConfig, LLTrainerConfig, SBVGPTrainerConfig
+from .sysident_tables import SIConfig
+from .trainer_tables import (
+    FPTrainerConfig,
+    LLTrainerConfig,
+    SBVGPTrainerConfig,
+    SITrainerConfig,
+)
 
 
 @schema
@@ -221,6 +228,112 @@ class LikelihoodResult(dj.Computed):
         print("Temporary files removed.")
 
         print("LikelihoodResult.make() completed.")
+
+
+@schema
+class SIResult(dj.Computed):
+    """
+    System identification result table
+    """
+
+    USE_WANDB = False
+    FORCE_GPU = False
+
+    definition = """
+        -> SIConfig.proj(si_id='id')
+        -> SITrainerConfig.proj(trainer_id='id')
+        -> DataLoaderConfig.proj(dl_id='id')
+        ---
+        train_ll_mean: double    # mean per dimension, per sample, in nats
+        train_ll_sem: double    # standard error of the mean
+        val_ll_mean: double
+        val_ll_sem: double
+        test_ll_mean: double
+        test_ll_sem: double
+        tracker_output: attach@external
+        eval_output: attach@external
+        model: attach@external
+        """
+
+    def make(self, key):
+        # Print the provided key
+        print("Received key ->", key)
+
+        # Fetch and prepare args
+        print("Fetching SI arguments...")
+        sysident_args = (SIConfig & {"id": key["si_id"]}).fetch1()
+        sysident_args.pop("id")
+        print("SI arguments:", sysident_args)
+
+        print("Fetching SITrainerConfig arguments...")
+        trainer_args = (SITrainerConfig & {"id": key["trainer_id"]}).fetch1()
+        trainer_args.pop("id")
+        print("SITrainer arguments:", trainer_args)
+
+        print("Fetching DataLoaderConfig arguments...")
+        data_loader_args = (DataLoaderConfig & {"id": key["dl_id"]}).fetch1()
+        data_loader_args.pop("id")
+        print("DataLoaderConfig arguments:", data_loader_args)
+
+        if self.FORCE_GPU:
+            if torch.cuda.is_available():
+                device = torch.device("cuda")
+            else:
+                raise ValueError("GPU not available.")
+        else:
+            device = torch.device("cpu")
+        trainer_args["device"] = device
+
+        # Train the model and get results
+        print("Training sysident model...")
+        (
+            model,
+            train_ll_mean,
+            train_ll_sem,
+            val_ll_mean,
+            val_ll_sem,
+            test_ll_mean,
+            test_ll_sem,
+            tracker_output,
+            eval_output,
+        ) = train_sysident(
+            data_loader_args, sysident_args, trainer_args, self.USE_WANDB
+        )
+        print("Model training completed.")
+
+        with tempfile.TemporaryDirectory() as tmp_dir:
+            # save model
+            model_fname = Path(tmp_dir) / f"{make_hash(key)}_model.pt"
+            torch.save(model, model_fname)
+
+            # save tracker output
+            tracker_output_fname = (
+                Path(tmp_dir) / f"{make_hash(key)}_tracker_output.pkl"
+            )
+            with open(tracker_output_fname, "wb") as f:
+                pickle.dump(tracker_output, f)
+
+            # save eval output
+            eval_output_fname = Path(tmp_dir) / f"{make_hash(key)}_eval_output.pkl"
+            with open(eval_output_fname, "wb") as f:
+                pickle.dump(eval_output, f)
+
+            print("Inserting results into the database...")
+            self.insert1(
+                {
+                    **key,
+                    "train_ll_mean": train_ll_mean,
+                    "train_ll_sem": train_ll_sem,
+                    "val_ll_mean": val_ll_mean,
+                    "val_ll_sem": val_ll_sem,
+                    "test_ll_mean": test_ll_mean,
+                    "test_ll_sem": test_ll_sem,
+                    "tracker_output": tracker_output_fname,
+                    "eval_output": eval_output_fname,
+                    "model": model_fname,
+                }
+            )
+            print("Results inserted.")
 
 
 @schema

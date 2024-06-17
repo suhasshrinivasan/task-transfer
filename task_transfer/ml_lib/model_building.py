@@ -159,8 +159,8 @@ def build_loc_scale_mlp(
 def build_conc_rate_mlp(
     in_features,
     out_features_core,
-    out_features_loc,
-    out_features_scale,
+    out_features_conc,
+    out_features_rate,
     n_layers,
     nonlin,
     dropout_rate,
@@ -181,8 +181,8 @@ def build_conc_rate_mlp(
     )
     return ConcRate(
         mlp_core,
-        out_features_loc,
-        out_features_scale,
+        out_features_conc,
+        out_features_rate,
         init_std=init_std,
         nonneg_transform=nonneg_transform,
         clamp_pre_conc=clamp_pre_conc,

@@ -69,6 +69,7 @@ def build_conditional_trainer(
     early_stopping_patience,
     logging_type,
     device,
+    model_display_name,
 ):
     """
     Build the trainer for the likelihood model.
@@ -91,7 +92,7 @@ def build_conditional_trainer(
         weight_decay=weight_decay,
     )
     train_logger = TrainLogger(
-        model_display_name="Likelihood",
+        model_display_name=model_display_name,
         logging_type=logging_type,
     )
     trainer = Trainer(
