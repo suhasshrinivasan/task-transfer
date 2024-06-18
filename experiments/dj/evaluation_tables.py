@@ -13,7 +13,7 @@ from task_transfer.ml_lib.data_loading import build_dataloaders
 
 from ..learning.evaluate_model import evaluate_predictive_model
 from .dataloader_tables import DataLoaderConfig
-from .result_tables import FlowPriorResult, SIResult
+from .result_tables import FlowPriorResult, SBVGPResult, SIResult
 from .schema import schema
 
 
@@ -256,7 +256,9 @@ class EvalDatasets(dj.Lookup):
     data_fname: varchar(255)
     """
     contents = [
-        "/src/project/data/synthetic/haefner_2afc/original_haefner_2afc_task_2_dataset.pkl",
+        (
+            "/src/project/data/synthetic/haefner_2afc/original_haefner_2afc_task_2_dataset.pkl",
+        )
     ]
 
 
@@ -325,14 +327,19 @@ class SBVGPEval(dj.Computed):
 
 
 def dj_load_model_data_and_evaluate(self, key):
-    if 
-    args = (self & key).fetch1()
-    model_args = {k: v for k, v in args.items() if k not in ["data_fname"]}
+    if isinstance(self, SIEval):
+        result_table = SIResult
+    elif isinstance(self, SBVGPEval):
+        result_table = SBVGPResult
+    else:
+        raise ValueError("Unknown result table")
+    result_key = {k: v for k, v in key.items() if k not in ["data_fname"]}
+    model_args = (result_table & result_key).fetch1()
     dataloader_args = {
-        "data_fname": args["data_fname"],
+        "data_fname": key["data_fname"],
         "train_prop": 0.7,
         "val_prop": 0.2,
-        "batch_size": 128,  # these are hardcoded since they don't matter for evaluation
+        "batch_size": 128,
     }
     if self.FORCE_GPU:
         device = "cuda"
