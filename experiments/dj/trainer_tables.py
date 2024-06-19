@@ -73,3 +73,22 @@ class SITrainerConfig(dj.Manual):
     early_stopping_threshold: int
     early_stopping_patience: int
     """
+
+
+@schema
+class AdaptPriorTrainer(dj.Manual):
+    """
+    Adapt prior trainer configuration table
+    """
+
+    definition = """
+    id: char(32)
+    ---
+    mc_sample_size: int
+    lr: float
+    weight_decay: float
+    n_epochs: int
+    batch_size: int
+    early_stopping_threshold: int
+    early_stopping_patience: int
+    """

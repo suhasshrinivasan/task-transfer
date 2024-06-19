@@ -1,7 +1,7 @@
 import torch
 from torch.optim import Adam
 
-from .loss_criteria import conditional_nll, marginal_nll
+from .loss_criteria import conditional_nll, marginal_nll, mc_marginal_nll
 from .trainer import Trainer
 from .training_tools import TrainLogger
 
@@ -88,6 +88,50 @@ def build_conditional_trainer(
     eval_params = eval_params
     optimizer = Adam(
         model.parameters(),
+        lr=lr,
+        weight_decay=weight_decay,
+    )
+    train_logger = TrainLogger(
+        model_display_name=model_display_name,
+        logging_type=logging_type,
+    )
+    trainer = Trainer(
+        loss_criterion=loss_criterion,
+        eval_criterion=eval_criterion,
+        eval_params=eval_params,
+        eval_interval=eval_interval,
+        optimizer=optimizer,
+        lr=lr,
+        early_stopping_threshold=early_stopping_threshold,
+        early_stopping_patience=early_stopping_patience,
+        logger=train_logger,
+        device=device,
+    )
+    return trainer
+
+
+def build_prior_adapt_trainer(
+    joint_model,
+    data_dim,
+    mc_sample_size,
+    lr,
+    weight_decay,
+    eval_criterion,
+    eval_params,
+    eval_interval,
+    early_stopping_threshold,
+    early_stopping_patience,
+    logging_type,
+    device,
+    model_display_name,
+):
+    loss_criterion = lambda model, batch: mc_marginal_nll(
+        model, batch, data_dim, mc_sample_size
+    )
+    eval_criterion = eval_criterion
+    eval_params = eval_params
+    optimizer = Adam(
+        joint_model.prior.parameters(),
         lr=lr,
         weight_decay=weight_decay,
     )

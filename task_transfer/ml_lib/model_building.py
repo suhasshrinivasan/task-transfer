@@ -199,3 +199,7 @@ def build_conditional(cond_dist, likelihood):
         return G.IndependentGamma(_parameters=likelihood)
     else:
         raise NotImplementedError("Unknown conditional distribution")
+
+
+def build_joint_model(prior_model, cond_model):
+    return G.Joint(prior_model, cond_model)

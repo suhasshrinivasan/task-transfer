@@ -7,9 +7,58 @@ import torch
 from matplotlib.colors import ListedColormap, TwoSlopeNorm
 from scipy.stats import kendalltau, pearsonr, spearmanr
 
-from ..ml_lib.loss_criteria import conditional_nll, joint_nll, marginal_nll
+from ..ml_lib.loss_criteria import conditional_nll, marginal_nll, mc_marginal_nll
 
 
+def compute_logl(
+    model,
+    data_loader,
+    data_dim,
+    cond_dim=None,
+    device="cpu",
+):
+    if cond_dim is None:
+        logl_fn = lambda model, batch, data_dim, cond_dim: marginal_nll(
+            model, batch, data_dim
+        )
+    else:
+        logl_fn = lambda model, batch, data_dim, cond_dim: conditional_nll(
+            model, batch, data_dim, cond_dim
+        )
+    log_probs = []
+    with torch.no_grad():
+        model.eval()
+        model = model.to(device)
+        for batch in data_loader:
+            batch = [b.to(device) for b in batch]
+            log_prob = -logl_fn(model, batch, data_dim, cond_dim)
+            log_probs.append(log_prob)
+        mean_log_prob = torch.cat(log_probs).mean()
+        sem_log_prob = torch.cat(log_probs).std() / (len(log_probs) ** 0.5)
+    return mean_log_prob.item(), sem_log_prob.item()
+
+
+def logl_mc_marginal(
+    joint_model,
+    data_loader,
+    data_dim,
+    mc_sample_size,
+    device="cpu",
+):
+    log_probs = []
+    with torch.no_grad():
+        joint_model.eval()
+        joint_model = joint_model.to(device)
+        for batch in data_loader:
+            batch = [b.to(device) for b in batch]
+            log_prob = -mc_marginal_nll(joint_model, batch, data_dim, mc_sample_size)
+            log_probs.append(log_prob)
+        mean_log_prob = torch.cat(log_probs).mean()
+        sem_log_prob = torch.cat(log_probs).std() / (len(log_probs) ** 0.5)
+    return mean_log_prob.item(), sem_log_prob.item()
+
+
+# TODO: depricate in favor of compute_logl
 def logl_conditional(
     model,
     data_loader,
@@ -30,6 +79,7 @@ def logl_conditional(
     return mean_log_prob.item(), sem_log_prob.item()
 
 
+# TODO: depricate in favor of compute_logl
 def logl_flow_prior(
     flow,
     data_loader,
