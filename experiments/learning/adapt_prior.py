@@ -4,6 +4,7 @@ import torch
 
 import wandb
 from task_transfer.evaluation.evaluate_generative_model import (
+    adapt_prior_eval_criterion,
     compute_logl,
     logl_mc_marginal,
 )
@@ -39,15 +40,26 @@ def adapt_prior(data_loader_args, model_args, trainer_args, use_wandb=False):
 
     image_dim = 1
     response_dim = 0
+
+    eval_params = {
+        "response_dim": response_dim,
+        "image_dim": image_dim,
+        "reduction": "mean",
+        "uncertainty": "sem",
+        "normalize": "none",
+        "unit": "nats",
+    }
+    eval_interval = 1
+
     trainer = build_prior_adapt_trainer(
         joint_model=joint_model,
         data_dim=image_dim,
         mc_sample_size=(trainer_args["mc_sample_size"],),
         lr=trainer_args["lr"],
         weight_decay=trainer_args["weight_decay"],
-        eval_criterion=None,
-        eval_params=None,
-        eval_interval=None,
+        eval_criterion=adapt_prior_eval_criterion,
+        eval_params=eval_params,
+        eval_interval=eval_interval,
         early_stopping_threshold=trainer_args["early_stopping_threshold"],
         early_stopping_patience=trainer_args["early_stopping_patience"],
         logging_type="wandb" if use_wandb else "stdout",
@@ -65,12 +77,13 @@ def adapt_prior(data_loader_args, model_args, trainer_args, use_wandb=False):
     tracker_output = trainer_output["tracker_output"]
     eval_output = trainer_output["eval_output"]
 
-    eval_mc_sample_size = (1000,)  # TODO: parameterize this?
+    eval_mc_sample_size = (10_000,)  # TODO: parameterize this?
     train_marginal_obs_ll_mean, train_marginal_obs_ll_sem = logl_mc_marginal(
         joint_model,
         train_loader,
         data_dim=image_dim,
         mc_sample_size=eval_mc_sample_size,
+        device="cpu",
     )
 
     val_marginal_obs_ll_mean, val_marginal_obs_ll_sem = logl_mc_marginal(
@@ -78,6 +91,7 @@ def adapt_prior(data_loader_args, model_args, trainer_args, use_wandb=False):
         val_loader,
         data_dim=image_dim,
         mc_sample_size=eval_mc_sample_size,
+        device="cpu",
     )
 
     test_marginal_obs_ll_mean, test_marginal_obs_ll_sem = logl_mc_marginal(
@@ -85,6 +99,7 @@ def adapt_prior(data_loader_args, model_args, trainer_args, use_wandb=False):
         test_loader,
         data_dim=image_dim,
         mc_sample_size=eval_mc_sample_size,
+        device="cpu",
     )
 
     train_prior_ll_mean, train_prior_ll_sem = compute_logl(
@@ -92,6 +107,11 @@ def adapt_prior(data_loader_args, model_args, trainer_args, use_wandb=False):
         train_loader,
         data_dim=response_dim,
         cond_dim=None,
+        device="cpu",
+        reduction="mean",
+        uncertainty="sem",
+        normalize="none",
+        unit="nats",
     )
 
     val_prior_ll_mean, val_prior_ll_sem = compute_logl(
@@ -99,6 +119,11 @@ def adapt_prior(data_loader_args, model_args, trainer_args, use_wandb=False):
         val_loader,
         data_dim=response_dim,
         cond_dim=None,
+        device="cpu",
+        reduction="mean",
+        uncertainty="sem",
+        normalize="none",
+        unit="nats",
     )
 
     test_prior_ll_mean, test_prior_ll_sem = compute_logl(
@@ -106,6 +131,11 @@ def adapt_prior(data_loader_args, model_args, trainer_args, use_wandb=False):
         test_loader,
         data_dim=response_dim,
         cond_dim=None,
+        device="cpu",
+        reduction="mean",
+        uncertainty="sem",
+        normalize="none",
+        unit="nats",
     )
 
     return (

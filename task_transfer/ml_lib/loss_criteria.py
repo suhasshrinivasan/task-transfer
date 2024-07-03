@@ -34,7 +34,7 @@ def marginal_nll(model, batch, data_dim):
     return -model(data)
 
 
-def conditional_nll(model, batch, data_dim, cond_dim):
+def conditional_nll(model, batch, data_dim, cond_dim, add_eps=False):
     """
     Computes the negative log-likelihood of the batch of data using the conditional model.
 
@@ -55,7 +55,9 @@ def conditional_nll(model, batch, data_dim, cond_dim):
     # wandb.log({"data/hist": data_hist, "cond/hist": cond_hist})
     # wandb.log({"data/min": data.min(), "data/max": data.max()})
     # wandb.log({"cond/min": cond.min(), "cond/max": cond.max()})
-    data = data + torch.finfo(data.dtype).eps
+    if add_eps:
+        print("!!!Warning!!! adding eps to data")
+        data = data + torch.finfo(data.dtype).eps
     nll = -model(data, cond=cond)
     return nll
 
@@ -86,6 +88,8 @@ def mc_marginal_nll(model, batch, data_dim, mc_sample_size=(1,)):
     data = batch[data_dim]
     prior_sample = model.prior.rsample(mc_sample_size)
     conditional_ll = model.conditional(data, cond=prior_sample.unsqueeze(1))
+    # TODO: debug code. cleanup
+    wandb.log({"eval/cond_ll_sample_mean": conditional_ll.mean()})
     marginal_ll = torch.logsumexp(conditional_ll, dim=0) - torch.log(
         torch.tensor(conditional_ll.shape[0])
     )

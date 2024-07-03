@@ -42,6 +42,9 @@ class Trainer:
             early_stopping_patience (int): Number of epochs with no improvement after which training will be stopped.
             logger (Logger): Logger instance to record training and validation metrics.
             device (torch.device): Device on which to train the model (CPU or GPU).
+            eval_criterion (callable): Evaluation criterion (function) used for evaluating the model.
+            eval_params (dict): Parameters to be passed to the evaluation criterion.
+            eval_interval (int): Interval (# epochs) at which to evaluate the model.
         """
         self.loss_criterion = loss_criterion
         self.eval_criterion = eval_criterion
@@ -202,9 +205,5 @@ class Trainer:
             val_loader (torch.utils.data.DataLoader): DataLoader for validation data.
         """
         return self.eval_criterion(
-            model,
-            val_loader,
-            epoch,
-            self.device,
-            self.eval_params,
+            model, val_loader, epoch, self.device, self.eval_params, self.logger
         )

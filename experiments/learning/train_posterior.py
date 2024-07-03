@@ -37,8 +37,8 @@ def train_sbvp(data_loader_args, posterior_args, trainer_args, use_wandb=False):
         amortization_fn = build_conc_rate_mlp(
             in_features=image_sample.shape[1],
             out_features_core=response_sample.shape[1],  # TODO: parameterize this?
-            out_features_loc=response_sample.shape[1],  # TODO: parameterize this?
-            out_features_scale=response_sample.shape[1],  # TODO: parameterize this?
+            out_features_conc=response_sample.shape[1],  # TODO: parameterize this?
+            out_features_rate=response_sample.shape[1],  # TODO: parameterize this?
             n_layers=posterior_args["n_layers"],
             nonlin=posterior_args["nonlin"],
             dropout_rate=posterior_args["dropout_rate"],
@@ -70,6 +70,7 @@ def train_sbvp(data_loader_args, posterior_args, trainer_args, use_wandb=False):
         eval_params=None,
         logging_type="wandb" if use_wandb else "stdout",
         device=trainer_args["device"],
+        model_display_name="sbvp",
     )
 
     # if use_wandb:

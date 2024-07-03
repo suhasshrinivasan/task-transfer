@@ -22,9 +22,23 @@ criterion = "val_ll_mean"
 k = 1
 
 prior_config_proj_col = "fp_id"
+# best_val_prior_results = fetch_best_model_results(
+#     result_table=FlowPriorResult,
+#     config_table=FlowPriorConfig,
+#     data_loader_config_table=DataLoaderConfig,
+#     trainer_config_table=FPTrainerConfig,
+#     config_proj_col=prior_config_proj_col,
+#     criterion=criterion,
+#     k=k,
+#     download_path=download_path,
+# )
+
+# get a prior model that does not model correlations
+no_corr_restriction = "flow_base_dist = 'normal' and affine_type = 'factorized'"
+flow_prior_config_table = FlowPriorConfig & no_corr_restriction
 best_val_prior_results = fetch_best_model_results(
     result_table=FlowPriorResult,
-    config_table=FlowPriorConfig,
+    config_table=flow_prior_config_table,
     data_loader_config_table=DataLoaderConfig,
     trainer_config_table=FPTrainerConfig,
     config_proj_col=prior_config_proj_col,
@@ -54,7 +68,15 @@ AdaptPriorConfig.insert(
             likelihood_id=best_val_likelihood_results["ll_id"],
             likelihood_trainer_id=best_val_likelihood_results["trainer_id"],
             orig_dl_id=best_val_prior_results["dl_id"],
-        )
+        ),
+        dict(
+            seed=100,
+            prior_fp_id=best_val_prior_results["fp_id"],
+            prior_trainer_id=best_val_prior_results["trainer_id"],
+            likelihood_id=best_val_likelihood_results["ll_id"],
+            likelihood_trainer_id=best_val_likelihood_results["trainer_id"],
+            orig_dl_id=best_val_prior_results["dl_id"],
+        ),
     ],
     skip_duplicates=True,
 )
@@ -75,11 +97,11 @@ AltDataLoaderConfig.insert(dataloader_configs_list, skip_duplicates=True)
 trainer_configs = OrderedDict(
     lr=[1e-3],
     weight_decay=[1e-3],
-    n_epochs=[250],
+    n_epochs=[300],
     batch_size=[128],
-    early_stopping_threshold=[10],
-    early_stopping_patience=[10],
-    mc_sample_size=[1, 10, 100],
+    early_stopping_threshold=[1000],
+    early_stopping_patience=[1000],
+    mc_sample_size=[50_000],
 )
 
 trainer_configs_list = dict_product(trainer_configs, insert_hash=True)
@@ -89,4 +111,15 @@ AdaptPriorTrainer.insert(trainer_configs_list, skip_duplicates=True)
 AdaptPriorResult.USE_WANDB = True
 AdaptPriorResult.FORCE_GPU = True
 
-AdaptPriorResult.populate(order="original", limit=1)
+AdaptPriorResult.populate(
+    "prior_fp_id = 'd0cf491f03b7f839c8a54834a6168081'",
+    limit=1,
+)
+
+# AdaptPriorResult.populate(order="original", limit=1)
+
+# AdaptPriorResult.populate(
+#     reserve_jobs=True,
+#     order="random",
+#     suppress_errors=True,
+# )

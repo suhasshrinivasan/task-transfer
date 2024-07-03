@@ -2,6 +2,8 @@ import hashlib
 import itertools as it
 from collections import Iterable, Mapping, OrderedDict
 
+import torch
+
 
 # from nnfabrik:
 # https://github.com/sinzlab/nnfabrik/blob/ea4f5148c943741e45d937fe7ee681978b4224f7/nnfabrik/utility/dj_helpers.py#L58-L97
@@ -93,3 +95,41 @@ def dict_product(d, insert_hash=True):
         result.append(product_dict)
 
     return result
+
+
+def are_models_equal(model1, model2):
+    """
+    Check if two PyTorch models have the exact same parameter values.
+
+    This function compares the parameters of two nn.Module models to determine
+    if they are exactly the same. It does this by iterating over the parameters
+    of both models and checking for equality.
+
+    Parameters:
+    model1 (nn.Module): The first model to compare.
+    model2 (nn.Module): The second model to compare.
+
+    Returns:
+    bool: True if the models have the exact same parameters, False otherwise.
+
+    Example:
+    >>> model1 = nn.Linear(10, 1)
+    >>> model2 = nn.Linear(10, 1)
+    >>> model2.load_state_dict(model1.state_dict())
+    >>> are_models_equal(model1, model2)
+    True
+    """
+    # Check if both models have the same number of parameters
+    # If they don't, they cannot be the same
+    if len(list(model1.parameters())) != len(list(model2.parameters())):
+        return False
+
+    # Iterate through the parameters of both models
+    for param1, param2 in zip(model1.parameters(), model2.parameters()):
+        # Check if the parameters are equal
+        # torch.equal checks if two tensors have the same size and elements
+        if not torch.equal(param1, param2):
+            return False
+
+    # If all parameters are equal, the models are considered the same
+    return True

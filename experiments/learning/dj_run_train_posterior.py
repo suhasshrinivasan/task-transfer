@@ -55,7 +55,7 @@ fp_samples_configs = OrderedDict(
     fp_id=[best_val_prior_results["fp_id"]],
     dl_id=[best_val_prior_results["dl_id"]],
     trainer_id=[best_val_prior_results["trainer_id"]],
-    n_samples=[10_000],
+    n_samples=[50_000],
     seed=[42],
 )
 

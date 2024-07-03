@@ -7,7 +7,103 @@ import torch
 from matplotlib.colors import ListedColormap, TwoSlopeNorm
 from scipy.stats import kendalltau, pearsonr, spearmanr
 
-from ..ml_lib.loss_criteria import conditional_nll, marginal_nll, mc_marginal_nll
+from ..ml_lib.loss_criteria import (
+    conditional_nll,
+    joint_nll,
+    marginal_nll,
+    mc_marginal_nll,
+)
+
+
+def adapt_prior_eval_criterion(model, data_loader, epoch, device, eval_params, logger):
+    prior_ll_mean, prior_ll_sem = compute_logl(
+        model=model.prior,
+        data_loader=data_loader,
+        data_dim=eval_params["response_dim"],
+        cond_dim=None,
+        device=device,
+        reduction=eval_params["reduction"],
+        uncertainty=eval_params["uncertainty"],
+        normalize=eval_params["normalize"],
+        unit=eval_params["unit"],
+    )
+    joint_ll_mean, joint_ll_sem = compute_joint_logl(
+        model=model,
+        data_loader=data_loader,
+        device=device,
+        reduction=eval_params["reduction"],
+        uncertainty=eval_params["uncertainty"],
+        normalize=eval_params["normalize"],
+        unit=eval_params["unit"],
+    )
+    cond_ll_mean, cond_ll_sem = compute_logl(
+        model=model.conditional,
+        data_loader=data_loader,
+        data_dim=eval_params["image_dim"],
+        cond_dim=eval_params["response_dim"],
+        device=device,
+        reduction=eval_params["reduction"],
+        uncertainty=eval_params["uncertainty"],
+        normalize=eval_params["normalize"],
+        unit=eval_params["unit"],
+    )
+    metrics = {
+        "eval/prior_ll_mean": prior_ll_mean,
+        "eval/prior_ll_sem": prior_ll_sem,
+        "eval/joint_ll_mean": joint_ll_mean,
+        "eval/joint_ll_sem": joint_ll_sem,
+        "eval/cond_ll_mean": cond_ll_mean,
+        "eval/cond_ll_sem": cond_ll_sem,
+    }
+    track_message = f"Epoch {epoch} evaluation"
+    logger.log(metrics, track_message)
+    return metrics
+
+
+def compute_joint_logl(
+    model,
+    data_loader,
+    device="cpu",
+    reduction="mean",
+    uncertainty="sem",
+    normalize="none",
+    unit="nats",
+):
+    log_probs = []
+    with torch.no_grad():
+        model.eval()
+        model = model.to(device)
+        for batch in data_loader:
+            batch = [b.to(device) for b in batch]
+            log_prob = -joint_nll(model, batch)
+            log_probs.append(log_prob)
+        if reduction == "mean":
+            lp = torch.cat(log_probs).mean().item()
+        elif reduction == "sum":
+            lp = torch.cat(log_probs).sum().item()
+        elif reduction == "none":
+            lp = torch.cat(log_probs)
+        else:
+            raise ValueError("Unknown reduction")
+        if uncertainty == "sem":
+            lp_uncertainty = torch.cat(log_probs).std() / (len(log_probs) ** 0.5)
+            lp_uncertainty = lp_uncertainty.item()
+        elif uncertainty == "std":
+            lp_uncertainty = torch.cat(log_probs).std()
+            lp_uncertainty = lp_uncertainty.item()
+        elif uncertainty == "none":
+            lp_uncertainty = None
+        else:
+            raise ValueError("Unknown uncertainty measure")
+        if normalize != "none":
+            raise ValueError("Normalization not supported for joint log-likelihood")
+        if unit == "nats":
+            pass
+        elif unit == "bits":
+            lp /= np.log(2)
+        else:
+            raise ValueError("Unknown unit")
+    return lp, lp_uncertainty
 
 
 def compute_logl(
@@ -16,6 +112,10 @@ def compute_logl(
     data_dim,
     cond_dim=None,
     device="cpu",
+    reduction="mean",
+    uncertainty="sem",
+    normalize="none",
+    unit="nats",
 ):
     if cond_dim is None:
         logl_fn = lambda model, batch, data_dim, cond_dim: marginal_nll(
@@ -33,9 +133,39 @@ def compute_logl(
             batch = [b.to(device) for b in batch]
             log_prob = -logl_fn(model, batch, data_dim, cond_dim)
             log_probs.append(log_prob)
-        mean_log_prob = torch.cat(log_probs).mean()
-        sem_log_prob = torch.cat(log_probs).std() / (len(log_probs) ** 0.5)
-    return mean_log_prob.item(), sem_log_prob.item()
+        if reduction == "mean":
+            lp = torch.cat(log_probs).mean().item()
+        elif reduction == "sum":
+            lp = torch.cat(log_probs).sum().item()
+        elif reduction == "none":
+            lp = torch.cat(log_probs)
+        else:
+            raise ValueError("Unknown reduction")
+        if uncertainty == "sem":
+            lp_uncertainty = torch.cat(log_probs).std() / (len(log_probs) ** 0.5)
+            lp_uncertainty = lp_uncertainty.item()
+        elif uncertainty == "std":
+            lp_uncertainty = torch.cat(log_probs).std()
+            lp_uncertainty = lp_uncertainty.item()
+        elif uncertainty == "none":
+            lp_uncertainty = None
+        else:
+            raise ValueError("Unknown uncertainty measure")
+        if normalize == "per_dim":
+            batch = next(iter(data_loader))
+            data = batch[data_dim]
+            lp /= data.shape[1:].numel()
+        elif normalize == "none":
+            pass
+        else:
+            raise ValueError("Unknown normalization")
+        if unit == "nats":
+            pass
+        elif unit == "bits":
+            lp /= np.log(2)
+        else:
+            raise ValueError("Unknown unit")
+    return lp, lp_uncertainty
 
 
 def logl_mc_marginal(
@@ -573,11 +703,14 @@ def evaluate_flow_prior(
         sample_alpha=1.0,
         fig_save_dir=Path("/src/project/figures/learning/"),
     ),
+    seed=42,
     **catch_all,
 ):
+    torch.manual_seed(seed)
     with torch.no_grad():
         flow.eval()
         samples = flow.sample((n_samples,))
+        flow = flow.to(device)
         all_responses = torch.cat(
             [responses.detach().to(device) for responses, _ in data_loader], dim=0
         )
