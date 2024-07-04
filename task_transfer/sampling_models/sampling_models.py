@@ -1,3 +1,4 @@
+import gensn.distributions as G
 import torch
 import torch.distributions as D
 
@@ -149,3 +150,38 @@ class HaefnerModel:
             "i_samples": i_samples,
         }
         return samples_dict
+
+    def i_cond_x_dist(self, x_samples, dist_lib="gensn"):
+        """
+        Computes the conditional distribution of the image samples given the x samples.
+
+        Args:
+            x_samples (torch.Tensor): Samples for the x population.
+
+        Returns:
+            torch.distributions.Distribution: Conditional distribution of the image samples.
+        """
+        i_loc = x_samples @ self.x_pfs.reshape(self.x_pfs.shape[0], -1)
+        if dist_lib == "gensn":
+            dist = G.IndependentNormal(loc=i_loc, scale=self.obs_sigma)
+        elif dist_lib == "torch":
+            dist = D.Independent(
+                D.Normal(loc=i_loc, scale=self.obs_sigma),
+                reinterpreted_batch_ndims=1,
+            )
+        else:
+            raise ValueError(f"Invalid dist_lib: {dist_lib}")
+        return dist
+
+    def log_prob_i_cond_x(self, i_samples, x_samples):
+        """
+        Computes the log probability of the image samples given the x samples.
+
+        Args:
+            i_samples (torch.Tensor): Image samples.
+            x_samples (torch.Tensor): Samples for the x population.
+
+        Returns:
+            torch.Tensor: Log probability of the image samples.
+        """
+        return self.i_cond_x_dist(x_samples).log_prob(i_samples)

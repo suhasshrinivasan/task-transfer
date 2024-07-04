@@ -157,8 +157,9 @@ def compute_logl(
             lp /= data.shape[1:].numel()
         elif normalize == "none":
             pass
-        else:
-            raise ValueError("Unknown normalization")
+        elif normalize == "per_dim":
+            n_dims = data.shape[1:].numel()
+            lp /= n_dims
         if unit == "nats":
             pass
         elif unit == "bits":
@@ -166,6 +167,65 @@ def compute_logl(
         else:
             raise ValueError("Unknown unit")
     return lp, lp_uncertainty
+
+
+# TODO: use this
+def logl_mc_marginal_eval(
+    joint_model,
+    data_loader,
+    data_dim,
+    mc_sample_size,
+    device="cpu",
+    reduction="mean",
+    uncertainty="sem",
+    normalize="none",
+    unit="nats",
+):
+    log_probs = []
+    with torch.no_grad():
+        joint_model.eval()
+        joint_model = joint_model.to(device)
+        for batch in data_loader:
+            batch = [b.to(device) for b in batch]
+            log_prob = -mc_marginal_nll(joint_model, batch, data_dim, mc_sample_size)
+            log_probs.append(log_prob)
+        if reduction == "mean":
+            lp = torch.cat(log_probs).mean().item()
+        elif reduction == "sum":
+            lp = torch.cat(log_probs).sum().item()
+        elif reduction == "none":
+            lp = torch.cat(log_probs)
+        else:
+            raise ValueError("Unknown reduction")
+        if uncertainty == "sem":
+            lp_uncertainty = torch.cat(log_probs).std() / (len(log_probs) ** 0.5)
+            lp_uncertainty = lp_uncertainty.item()
+        elif uncertainty == "std":
+            lp_uncertainty = torch.cat(log_probs).std()
+            lp_uncertainty = lp_uncertainty.item()
+        elif uncertainty == "none":
+            lp_uncertainty = None
+        else:
+            raise ValueError("Unknown uncertainty measure")
+        if normalize == "per_dim":
+            batch = next(iter(data_loader))
+            data = batch[data_dim]
+            lp /= data.shape[1:].numel()
+        elif normalize == "none":
+            pass
+        elif normalize == "per_dim":
+            n_dims = data.shape[1:].numel()
+            lp /= n_dims
+        if unit == "nats":
+            pass
+        elif unit == "bits":
+            lp /= np.log(2)
+        else:
+            raise ValueError("Unknown unit")
+    return lp, lp_uncertainty
+
+
+# TODO: depricate in favor of logl_mc_marginal_eval
 
 
 def logl_mc_marginal(
@@ -226,6 +286,50 @@ def logl_flow_prior(
         mean_log_prob = torch.cat(log_probs).mean()
         sem_log_prob = torch.cat(log_probs).std() / (len(log_probs) ** 0.5)
     return mean_log_prob.item(), sem_log_prob.item()
+
+
+def compute_haefner_logl_i_cond_x(
+    haefner_model,
+    data_loader,
+    reduction="mean",
+    uncertainty="sem",
+    normalize="none",
+    unit="nats",
+):
+    lps = []
+    for responses, images in data_loader:
+        lps.append(haefner_model.log_prob_i_cond_x(images, responses))
+    lps = torch.cat(lps)
+    if reduction == "mean":
+        lp = lps.mean().item()
+    elif reduction == "sum":
+        lp = lps.sum().item()
+    elif reduction == "none":
+        lp = lps
+    else:
+        raise ValueError("Unknown reduction")
+    if uncertainty == "sem":
+        lp_uncertainty = lps.std() / (len(lps) ** 0.5)
+        lp_uncertainty = lp_uncertainty.item()
+    elif uncertainty == "std":
+        lp_uncertainty = lps.std()
+        lp_uncertainty = lp_uncertainty.item()
+    elif uncertainty == "none":
+        lp_uncertainty = None
+    else:
+        raise ValueError("Unknown uncertainty measure")
+    if normalize == "none":
+        pass
+    elif normalize == "per_dim":
+        n_dims = images.shape[1:].numel()
+        lp /= n_dims
+    if unit == "nats":
+        pass
+    elif unit == "bits":
+        lp /= np.log(2)
+    else:
+        raise ValueError("Unknown unit")
+    return lp, lp_uncertainty
 
 
 def evaluate_correlation(model_corr, real_corr):

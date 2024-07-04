@@ -62,6 +62,56 @@ def conditional_nll(model, batch, data_dim, cond_dim, add_eps=False):
     return nll
 
 
+# # TODO: CAREFUL! ChatGPT corrected!
+# def mc_marginal_nll(model, batch, data_dim, mc_sample_size=1, reduction="none"):
+#     """
+#     Marginalize out the prior distribution to obtain the marginal negative log-likelihood of the data
+#     using Monte Carlo sampling.
+
+#     Mathematically, the marginal likelihood is given by:
+#     p(x) = \int p(x|z)p(z) dz
+#         = E_{z \sim p(z)}[p(x|z)]
+#         \\approx \\frac{1}{N} \sum_{i=1}^N p(x|z_i) for z_i \sim p(z)
+
+#     Args:
+#         model (gensn.distributions): The joint model, which includes
+#             the prior and the conditional distributions.
+#         batch (torch.Tensor): The batch of data of shape (batch_size, data_dim).
+#         data_dim (int): The dimensionality of the data.
+#         mc_sample_size (int): The number of Monte Carlo samples.
+#         reduction (str): The reduction method. Default is "none".
+
+#     Returns:
+#         torch.Tensor: The marginal negative log-likelihood of the batch of data
+#             of shape (batch_size,) if reduction is "none"
+#             or of shape torch.Size([]) if reduction is "mean" or "sum".
+#     """
+#     data = batch[data_dim]
+#     batch_size = data.shape[0]
+
+#     # Sample from the prior
+#     prior_samples = model.prior.rsample((mc_sample_size[0], batch_size))
+
+#     # Compute conditional log-likelihoods
+#     conditional_ll = model.conditional(data, cond=prior_samples)
+
+#     # Log-sum-exp trick for numerical stability
+#     log_prob = torch.logsumexp(conditional_ll, dim=0) - torch.log(
+#         torch.tensor(mc_sample_size).to(data.device)
+#     )
+
+#     # Negative log-likelihood
+#     marginal_nll = -log_prob
+
+#     if reduction == "mean":
+#         return marginal_nll.mean()
+#     elif reduction == "sum":
+#         return marginal_nll.sum()
+#     else:
+#         return marginal_nll
+
+
+# TODO: self written. use this!
 def mc_marginal_nll(model, batch, data_dim, mc_sample_size=(1,)):
     """
     Marginalize out the prior distribution to obtain the marginal negative log-likelihood of the data
@@ -93,4 +143,18 @@ def mc_marginal_nll(model, batch, data_dim, mc_sample_size=(1,)):
     marginal_ll = torch.logsumexp(conditional_ll, dim=0) - torch.log(
         torch.tensor(conditional_ll.shape[0])
     )
+    # TODO: debug code. cleanup
+    cond_dim = 0
+    cond = batch[cond_dim]
+    conditional_ll_real = model.conditional(data, cond=cond.unsqueeze(1))
+    wandb.log({"eval/cond_ll_real_mean": conditional_ll_real.mean()})
+    marginal_ll_real = torch.logsumexp(conditional_ll_real, dim=0) - torch.log(
+        torch.tensor(conditional_ll_real.shape[0])
+    )
+    wandb.log({"eval/marg_ll_sample": marginal_ll.mean()})
+    wandb.log({"eval/marg_ll_real": marginal_ll_real.mean()})
+
     return -marginal_ll
+
+
+# def
