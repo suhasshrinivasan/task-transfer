@@ -9,12 +9,22 @@ from task_transfer.evaluation.evaluate_generative_model import (
     logl_mc_marginal,
 )
 from task_transfer.ml_lib.data_loading import build_dataloaders
-from task_transfer.ml_lib.model_building import build_joint_model
+from task_transfer.ml_lib.model_building import build_flow_model, build_joint_model
 from task_transfer.ml_lib.trainer_building import build_prior_adapt_trainer
 
 
 def adapt_prior(data_loader_args, model_args, trainer_args, use_wandb=False):
-    torch.manual_seed(model_args["seed"])
+    # TODO: DEBUG. Remove this.
+    # if (
+    #     data_loader_args["data_fname"]
+    #     != "/src/project/data/synthetic/haefner_2afc/original_haefner_2afc_task_1_dataset.pkl"
+    # ):
+    #     raise ValueError(
+    #         "data_fname must be /src/project/data/synthetic/haefner_2afc/original_haefner_2afc_task_1_dataset.pkl"
+    #     )
+    print("data_loader_args:", data_loader_args)
+    if model_args["seed"] < 0:
+        torch.manual_seed(-model_args["seed"])
     current_function_name = inspect.currentframe().f_code.co_name
     if use_wandb:
         wandb.init(
@@ -30,9 +40,25 @@ def adapt_prior(data_loader_args, model_args, trainer_args, use_wandb=False):
         batch_size=trainer_args["batch_size"],
     )
 
-    prior_model = torch.load(
-        model_args["prior_model_path"], map_location=trainer_args["device"]
-    )
+    if model_args["seed"] < 0:
+        # build prior model and train from scratch
+        response_sample, _ = next(iter(train_loader))
+        n_prior_dims = response_sample.shape[1]
+        prior_model = build_flow_model(
+            dims=n_prior_dims,
+            flow_base_distribution=model_args["prior_model_base_dist"],
+            flow_depth=model_args["prior_model_depth"],
+            flow_nonlinearity=model_args["prior_model_nonlin"],
+            flow_initial_nonlinearity=model_args["prior_model_initial_nonlin"],
+            flow_final_nonlinearity=model_args["prior_model_final_nonlin"],
+            affine_type=model_args["prior_model_affine_type"],
+        )
+    else:
+        # load pre-trained prior model
+        prior_model = torch.load(
+            model_args["prior_model_path"], map_location=trainer_args["device"]
+        )
+
     conditional_model = torch.load(
         model_args["likelihood_model_path"], map_location=trainer_args["device"]
     )

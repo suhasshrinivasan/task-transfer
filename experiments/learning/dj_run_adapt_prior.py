@@ -77,13 +77,22 @@ AdaptPriorConfig.insert(
             likelihood_trainer_id=best_val_likelihood_results["trainer_id"],
             orig_dl_id=best_val_prior_results["dl_id"],
         ),
+        dict(
+            seed=-100,
+            prior_fp_id=best_val_prior_results["fp_id"],
+            prior_trainer_id=best_val_prior_results["trainer_id"],
+            likelihood_id=best_val_likelihood_results["ll_id"],
+            likelihood_trainer_id=best_val_likelihood_results["trainer_id"],
+            orig_dl_id=best_val_prior_results["dl_id"],
+        ),
     ],
     skip_duplicates=True,
 )
 
 dataloader_configs = OrderedDict(
     data_fname=[
-        "/src/project/data/synthetic/haefner_2afc/original_haefner_2afc_task_2_dataset.pkl"
+        "/src/project/data/synthetic/haefner_2afc/original_haefner_2afc_task_2_dataset.pkl",
+        "/src/project/data/synthetic/haefner_2afc/original_haefner_2afc_task_1_dataset.pkl",
     ],
     train_prop=[0.7],
     val_prop=[0.2],
@@ -101,7 +110,7 @@ trainer_configs = OrderedDict(
     batch_size=[128],
     early_stopping_threshold=[1000],
     early_stopping_patience=[1000],
-    mc_sample_size=[50_000],
+    mc_sample_size=[100],
 )
 
 trainer_configs_list = dict_product(trainer_configs, insert_hash=True)
@@ -112,8 +121,9 @@ AdaptPriorResult.USE_WANDB = True
 AdaptPriorResult.FORCE_GPU = True
 
 AdaptPriorResult.populate(
-    "prior_fp_id = 'd0cf491f03b7f839c8a54834a6168081'",
-    limit=1,
+    "trainer_id = 'e267b2071bca2c3f9431f155e8e58f23' and seed = -100",
+    reserve_jobs=True,
+    suppress_errors=True,
 )
 
 # AdaptPriorResult.populate(order="original", limit=1)

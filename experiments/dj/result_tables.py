@@ -662,9 +662,17 @@ class AdaptPriorResult(dj.Computed):
             }
         ).fetch1(download_path="/tmp")["model"]
 
+        fp_args = (FlowPriorConfig & {"id": key["prior_fp_id"]}).fetch1()
+
         model_args = {
             "seed": key["seed"],
             "prior_model_path": prior_model_path,
+            "prior_model_depth": fp_args["flow_depth"],
+            "prior_model_initial_nonlin": fp_args["flow_initial_nonlin"],
+            "prior_model_final_nonlin": fp_args["flow_final_nonlin"],
+            "prior_model_nonlin": fp_args["flow_nonlin"],
+            "prior_model_base_dist": fp_args["flow_base_dist"],
+            "prior_model_affine_type": fp_args["affine_type"],
             "likelihood_model_path": likelihood_model_path,
         }
 

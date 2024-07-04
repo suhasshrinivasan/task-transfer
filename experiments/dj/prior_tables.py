@@ -32,7 +32,7 @@ class AdaptPriorConfig(dj.Manual):
     """
 
     definition = """
-    seed: int
+    seed: int   # negative seeds are used for training loaded models from scratch
     prior_fp_id: char(32) # to index into FlowPriorConfig
     prior_trainer_id: char(32)   # to index into FPTrainerConfig 
     likelihood_id: char(32) # to index into LikelihoodConfig
