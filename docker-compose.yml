@@ -4,9 +4,13 @@ services:
   dev:
     build: .
     image: task-transfer
-    ports:
-      - "${JUPYTER_IP:-127.0.0.1}:${JUPYTER_PORT:-8899}:8888"
     env_file: .env      
     volumes:
       - .:/src/project
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - capabilities: [gpu]
     entrypoint: /bin/bash -c "sleep infinity"
+    container_name: task-transfer-1
