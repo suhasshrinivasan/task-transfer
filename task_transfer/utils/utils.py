@@ -2,6 +2,7 @@ import hashlib
 import itertools as it
 from collections import Iterable, Mapping, OrderedDict
 
+import numpy as np
 import torch
 
 
@@ -133,3 +134,51 @@ def are_models_equal(model1, model2):
 
     # If all parameters are equal, the models are considered the same
     return True
+
+
+def reduce(quants, reduction):
+    if reduction == "mean":
+        lp = torch.cat(quants).mean().item()
+    elif reduction == "sum":
+        lp = torch.cat(quants).sum().item()
+    elif reduction == "none":
+        lp = torch.cat(quants)
+    else:
+        raise ValueError("Unknown reduction")
+    return lp
+
+
+def compute_uncertainty(quants, uncertainty):
+    if uncertainty == "sem":
+        lp_uncertainty = torch.cat(quants).std() / (len(quants) ** 0.5)
+        lp_uncertainty = lp_uncertainty.item()
+    elif uncertainty == "std":
+        lp_uncertainty = torch.cat(quants).std()
+        lp_uncertainty = lp_uncertainty.item()
+    elif uncertainty == "none":
+        lp_uncertainty = None
+    else:
+        raise ValueError("Unknown uncertainty measure")
+    return lp_uncertainty
+
+
+def normalize_tensor(x, normalize, data):
+    if normalize == "per_dim":
+        x /= data.shape[1:].numel()
+    elif normalize == "per_sample":
+        x /= data.shape[0]
+    elif normalize == "none":
+        pass
+    else:
+        raise ValueError("Unknown normalization")
+    return x
+
+
+def convert_unit(value, unit):
+    if unit == "nats":
+        pass
+    elif unit == "bits":
+        value /= np.log(2)
+    else:
+        raise ValueError("Unknown unit")
+    return value
