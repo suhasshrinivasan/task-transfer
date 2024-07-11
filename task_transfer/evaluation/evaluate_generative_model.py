@@ -13,6 +13,70 @@ from ..ml_lib.loss_criteria import (
     marginal_nll,
     mc_marginal_nll,
 )
+from ..utils.utils import compute_uncertainty, convert_unit, normalize_tensor, reduce
+
+
+def compute_logl_data_marginal(
+    conditional_model,
+    data_loader,
+    data_dim,
+    cond_dim,
+    device="cpu",
+    reduction="mean",
+    uncertainty="sem",
+    normalize="none",
+    unit="nats",
+):
+    log_probs = []
+    for batch in data_loader:
+        data = batch[data_dim].to(device)
+        cond = batch[cond_dim].to(device)
+        conditional_ll = conditional_model(data, cond=cond.unsqueeze(1))
+        marginal_ll = torch.logsumexp(conditional_ll, dim=0) - torch.log(
+            torch.tensor(conditional_ll.shape[0])
+        )
+        log_probs.append(marginal_ll)
+    lp = reduce(log_probs, reduction)
+    lp_uncertainty = compute_uncertainty(log_probs, uncertainty)
+    lp = normalize_tensor(lp, normalize, data)
+    lp = convert_unit(lp, unit)
+    return lp, lp_uncertainty
+
+
+def compute_logl_marginal(
+    conditional,
+    prior,
+    mc_sample_size,
+    data_loader,
+    data_dim,
+    device,
+    reduction,
+    uncertainty,
+    normalize,
+    unit,
+    prior_sampling_fn=None,
+):
+    log_probs = []
+    with torch.no_grad():
+        conditional.eval()
+        for batch in data_loader:
+            data = batch[data_dim]
+            data = data.to(device)
+            prior_sample = (
+                prior.sample((mc_sample_size,))
+                if prior_sampling_fn is None
+                else prior_sampling_fn(prior, mc_sample_size)
+            )
+            conditional_ll = conditional(data, cond=prior_sample.unsqueeze(1))
+            marginal_ll = torch.logsumexp(conditional_ll, dim=0) - torch.log(
+                torch.tensor(conditional_ll.shape[0], device=device)
+            )
+            log_probs.append(marginal_ll)
+            lp = reduce(log_probs, reduction)
+            lp_uncertainty = compute_uncertainty(log_probs, uncertainty)
+            lp = normalize_tensor(lp, normalize, data)
+            lp = convert_unit(lp, unit)
+    return lp, lp_uncertainty
 
 
 def adapt_prior_eval_criterion(model, data_loader, epoch, device, eval_params, logger):
@@ -182,6 +246,7 @@ def logl_mc_marginal_eval(
     unit="nats",
 ):
     log_probs = []
+    mc_sample_size = (mc_sample_size,)
     with torch.no_grad():
         joint_model.eval()
         joint_model = joint_model.to(device)
