@@ -46,6 +46,8 @@ def train_likelihood(data_loader_args, likelihood_args, trainer_args):
         eval_interval=None,
         eval_params=None,
         logging_type="stdout",
+        device=trainer_args["device"],
+        model_display_name="likelihood",
     )
 
     trainer_output = trainer.train(

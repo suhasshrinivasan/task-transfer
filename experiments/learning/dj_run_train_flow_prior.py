@@ -2,6 +2,7 @@ import itertools as it
 from collections import OrderedDict
 
 from experiments.dj.dataloader_tables import DataLoaderConfig
+from experiments.dj.dj_helpers import fetch_best_model_results
 from experiments.dj.prior_tables import FlowPriorConfig
 from experiments.dj.result_tables import FlowPriorResult
 from experiments.dj.trainer_tables import FPTrainerConfig
@@ -82,37 +83,78 @@ for values in it.product(*trainer_configs.values()):
 
 FPTrainerConfig.insert(trainer_configs_list, skip_duplicates=True)
 
-dataloader_configs = OrderedDict(
-    data_fname=[
-        "/src/project/data/synthetic/haefner_2afc/original_haefner_2afc_task_1_dataset.pkl",
-    ],
-    train_prop=[0.7],
-    val_prop=[0.2],
-)
-
-dataloader_configs_list = []
-
-for values in it.product(*dataloader_configs.values()):
-    config = {key: value for key, value in zip(dataloader_configs.keys(), values)}
-    config["id"] = make_hash(config)
-    dataloader_configs_list.append(config)
-
-DataLoaderConfig.insert(dataloader_configs_list, skip_duplicates=True)
 
 # run only for the log initial nonlinearity
-restriction_ids = (FlowPriorConfig & "flow_initial_nonlin = 'log'").fetch("id")
-restrictions = f"fp_id = '{restriction_ids[0]}'"
-for id in restriction_ids[1:]:
-    restrictions += f" or fp_id = '{id}'"
+# restriction_ids = (FlowPriorConfig & "flow_initial_nonlin = 'log'").fetch("id")
+# restrictions = f"fp_id = '{restriction_ids[0]}'"
+# for id in restriction_ids[1:]:
+#     restrictions += f" or fp_id = '{id}'"
 
-FlowPriorResult.populate(
-    restrictions,
-    order="original",
-    suppress_errors=True,
-)
+# FlowPriorResult.populate(
+#     restrictions,
+#     order="original",
+#     suppress_errors=True,
+# )
 
 # FlowPriorResult.populate(
 #     reserve_jobs=True,
 #     order="random",
 #     suppress_errors=True,
 # )
+
+# learn flow model on flat haefner dataset
+# but don't train all combinations
+# pick the best flow model on hierarchical dataset and borrow
+# the same architecture and other hyperparameters
+# write these as restrictions in the populate call
+download_path = "/tmp"
+criterion = "val_ll_mean"
+k = 1
+prior_config_proj_col = "fp_id"
+# get a prior model that is fit on task 1 data
+dataset_restriction = "id = '260a5ea8175f75eaef132f42873ad14a'"
+data_loader_config_table = DataLoaderConfig & dataset_restriction
+best_val_prior_results = fetch_best_model_results(
+    result_table=FlowPriorResult,
+    config_table=FlowPriorConfig,
+    data_loader_config_table=data_loader_config_table,
+    trainer_config_table=FPTrainerConfig,
+    config_proj_col=prior_config_proj_col,
+    criterion=criterion,
+    k=k,
+    download_path=download_path,
+)
+# grab fp_id from the best model
+# set dl_id to the flat haefner dataset
+restriction = (
+    f"fp_id = '{best_val_prior_results['fp_id']}' "
+    f"and dl_id = 'b8379e7d6998fc94a08a9a3742eec12d'"
+)
+FlowPriorResult.populate(
+    restriction,
+    order="original",
+    suppress_errors=True,
+)
+
+# also learn flow model without correlation, since the data is flat anyway
+no_corr_restriction = "flow_base_dist = 'normal' and affine_type = 'factorized'"
+flow_prior_config_table = FlowPriorConfig & no_corr_restriction
+best_val_prior_results = fetch_best_model_results(
+    result_table=FlowPriorResult,
+    config_table=flow_prior_config_table,
+    data_loader_config_table=data_loader_config_table,
+    trainer_config_table=FPTrainerConfig,
+    config_proj_col=prior_config_proj_col,
+    criterion=criterion,
+    k=k,
+    download_path=download_path,
+)
+restriction = (
+    f"fp_id = '{best_val_prior_results['fp_id']}' "
+    f"and dl_id = 'b8379e7d6998fc94a08a9a3742eec12d'"
+)
+FlowPriorResult.populate(
+    restriction,
+    order="original",
+    suppress_errors=True,
+)

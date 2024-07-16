@@ -132,6 +132,9 @@ class FlowPriorResult(dj.Computed):
 
 @schema
 class LikelihoodResult(dj.Computed):
+
+    FORCE_GPU = False
+
     definition = """
         -> LikelihoodConfig.proj(ll_id='id')
         -> LLTrainerConfig.proj(trainer_id='id')
@@ -167,6 +170,15 @@ class LikelihoodResult(dj.Computed):
         data_loader_args = (DataLoaderConfig & {"id": key["dl_id"]}).fetch1()
         data_loader_args.pop("id")
         print("DataLoaderConfig arguments:", data_loader_args)
+
+        if self.FORCE_GPU:
+            if torch.cuda.is_available():
+                device = torch.device("cuda")
+            else:
+                raise ValueError("GPU not available.")
+        else:
+            device = torch.device("cpu")
+        trainer_args["device"] = device
 
         # Train the model and get results
         print("Training flow prior model...")

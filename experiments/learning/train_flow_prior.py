@@ -5,8 +5,13 @@ from task_transfer.ml_lib.trainer_building import build_flow_trainer
 
 
 def train_flow_prior(data_loader_args, prior_args, trainer_args):
-    if prior_args["flow_initial_nonlin"] != "log":
-        raise ValueError("Only log initial nonlinearity is supported")
+    # if prior_args["flow_initial_nonlin"] != "log":
+    #     raise ValueError("Only log initial nonlinearity is supported")
+    if (
+        data_loader_args["data_fname"]
+        != "/src/project/data/synthetic/haefner_2afc/flat_haefner_dataset.pkl"
+    ):
+        raise ValueError("Only flat haefner dataset is supported")
     train_loader, val_loader, _ = build_dataloaders(
         data_fname=data_loader_args["data_fname"],
         train_prop=data_loader_args["train_prop"],

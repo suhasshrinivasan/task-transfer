@@ -61,3 +61,20 @@ orginal_haefner_2afc_task2["plotting_params"].update(
         "xdist_figfname": figdir / "haefner_xdist_task_2.pdf",
     }
 )
+
+flat_haefner = orginal_haefner_2afc_task1.copy()
+flat_haefner["delta"] = 0
+flat_haefner["data_fname"] = datadir / "flat_haefner_dataset.pkl"
+flat_haefner["plotting_params"] = orginal_haefner_2afc_task1["plotting_params"].copy()
+flat_haefner["plotting_params"].update(
+    {
+        "task_figfname": figdir / "flat_haefner_task.pdf",
+        "prior_figfname": figdir / "flat_haefner_task_prior.pdf",
+        "cdist_figfname": figdir / "flat_haefner_cdist.pdf",
+        "g_figfname": figdir / "flat_haefner_g.pdf",
+        "x_figfname": figdir / "flat_haefner_x.pdf",
+        "xcorr_figfname": figdir / "flat_haefner_xcorr.pdf",
+        "xcorr_hist_figfname": figdir / "flat_haefner_xcorr_hist.pdf",
+        "xdist_figfname": figdir / "flat_haefner_xdist.pdf",
+    }
+)

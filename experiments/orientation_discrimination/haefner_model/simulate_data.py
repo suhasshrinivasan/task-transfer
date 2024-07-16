@@ -134,13 +134,19 @@ def simulate_data(
 
 
 def main():
-    print("Simulating data for the original Haefner 2AFC task 1...")
-    simulate_data(**cfg.orginal_haefner_2afc_task1)
-    print("Simulation for task 1 completed.")
+    # BELOW COMMENTED OUT SINCE DATA IS ALREADY GENERATED
+    # print("Simulating data for the original Haefner 2AFC task 1...")
+    # simulate_data(**cfg.orginal_haefner_2afc_task1)
+    # print("Simulation for task 1 completed.")
 
-    print("Simulating data for the original Haefner 2AFC task 2...")
-    simulate_data(**cfg.orginal_haefner_2afc_task2)
-    print("Simulation for task 2 completed.")
+    # print("Simulating data for the original Haefner 2AFC task 2...")
+    # simulate_data(**cfg.orginal_haefner_2afc_task2)
+    # print("Simulation for task 2 completed.")
+
+    # GENERATING FLAT PRIOR DATA
+    print("Simulating data for the flat prior")
+    simulate_data(**cfg.flat_haefner)
+    print("Simulation for flat prior completed.")
 
 
 if __name__ == "__main__":
