@@ -111,6 +111,9 @@ def build_flow_model(
         flow_base_distribution = G.TrainableDistributionAdapter(
             D.MultivariateNormal, loc=loc, covariance_matrix=cov
         )
+    elif flow_base_distribution == "exponential":
+        lam = torch.nn.Parameter(torch.ones(dims))
+        flow_base_distribution = G.IndependentExponential(rate=lam)
     # TODO: add cases for conditional normal / uniform by simple construction
     else:
         raise ValueError("Unknown base distribution for flow")

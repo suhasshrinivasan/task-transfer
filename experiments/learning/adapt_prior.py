@@ -1,6 +1,8 @@
 import inspect
 
+import gensn.distributions as G
 import torch
+from gensn.parameters import TransformedParameter
 
 import wandb
 from task_transfer.evaluation.evaluate_generative_model import (
@@ -39,11 +41,10 @@ def adapt_prior(data_loader_args, model_args, trainer_args, use_wandb=False):
         val_prop=data_loader_args["val_prop"],
         batch_size=trainer_args["batch_size"],
     )
-
+    response_sample, _ = next(iter(train_loader))
+    n_prior_dims = response_sample.shape[1]
     if model_args["seed"] < 0:
         # build prior model and train from scratch
-        response_sample, _ = next(iter(train_loader))
-        n_prior_dims = response_sample.shape[1]
         prior_model = build_flow_model(
             dims=n_prior_dims,
             flow_base_distribution=model_args["prior_model_base_dist"],
@@ -53,6 +54,13 @@ def adapt_prior(data_loader_args, model_args, trainer_args, use_wandb=False):
             flow_final_nonlinearity=model_args["prior_model_final_nonlin"],
             affine_type=model_args["prior_model_affine_type"],
         )
+    # TODO: DEBUG. Remove this.
+    elif model_args["seed"] == 666:
+        lam = torch.nn.Parameter(torch.ones(n_prior_dims))
+        prior_model = G.IndependentExponential(rate=lam)
+    elif model_args["seed"] == -666:
+        lam = TransformedParameter(torch.randn(n_prior_dims) * 1e-3, torch.exp)
+        prior_model = G.IndependentExponential(rate=lam)
     else:
         # load pre-trained prior model
         prior_model = torch.load(

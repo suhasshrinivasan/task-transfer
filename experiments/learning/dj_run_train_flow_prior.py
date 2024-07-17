@@ -11,10 +11,11 @@ from task_transfer.utils.utils import make_hash
 
 def is_exceptional_flow_config(config):
     exceptional = False
-    if "flow_depth" not in config:
-        print(config)
 
     # Check for specific non-exceptional configuration
+    # These are
+    # 1. log-normal distribution
+    # 2. exponential distribution
     if (
         config["flow_depth"] == 0
         and config["flow_initial_nonlin"] in {"log", "softplus"}
@@ -22,6 +23,14 @@ def is_exceptional_flow_config(config):
         and config["affine_type"] == "none"
         and "multivariate_normal" in config["flow_base_dist"]
         and "_lrmn" in config["flow_base_dist"]
+    ):
+        exceptional = False
+    elif (
+        config["flow_depth"] == 0
+        and config["flow_initial_nonlin"] == "none"
+        and config["flow_nonlin"] == "none"
+        and config["affine_type"] == "none"
+        and "exponential" in config["flow_base_dist"]
     ):
         exceptional = False
     else:
