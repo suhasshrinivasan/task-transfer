@@ -110,7 +110,7 @@ trainer_configs = OrderedDict(
     batch_size=[128],
     early_stopping_threshold=[1000],
     early_stopping_patience=[1000],
-    mc_sample_size=[1_000],
+    mc_sample_size=[1_000, 10_000],
 )
 
 trainer_configs_list = dict_product(trainer_configs, insert_hash=True)
@@ -126,10 +126,53 @@ AdaptPriorResult.FORCE_GPU = True
 # 3. choose 1000 MC samples
 # the last one is optional but helps save time
 
+# restrictions = (
+#     "and orig_dl_id = 'b8379e7d6998fc94a08a9a3742eec12d' "
+#     "and dl_id = 'b8379e7d6998fc94a08a9a3742eec12d' "
+#     "and trainer_id = 'a7e83afb3d10e49d76cbfbe16c294932' "
+# )
+
+# AdaptPriorResult.populate(
+#     restrictions,
+#     reserve_jobs=True,
+#     order="random",
+#     suppress_errors=True,
+# )
+
+
+# four restrictions
+# 1. train only on flat prior dataset
+# 2. choose models pre-trained only on flat prior dataset
+# 3. choose 10,000 MC samples
+# 4. train only exp models, i.e., seed = +/- 666
+# the last one is optional but helps save time
+
+# restrictions = (
+#     "(seed = 666 or seed = -666) "
+#     "and orig_dl_id = 'b8379e7d6998fc94a08a9a3742eec12d' "
+#     "and dl_id = 'b8379e7d6998fc94a08a9a3742eec12d' "
+#     "and trainer_id = 'b4400f97d2c4a40c100d69b05687bac2' "
+# )
+
+# AdaptPriorResult.populate(
+#     restrictions,
+#     reserve_jobs=True,
+#     order="random",
+#     suppress_errors=True,
+# )
+
+
+# four restrictions
+# 1. train only on flat prior dataset
+# 2. choose models pre-trained only on flat prior dataset
+# 3. choose 10,000 MC samples
+# 4. train only flow models
+# the last one is optional but helps save time
+
 restrictions = (
     "orig_dl_id = 'b8379e7d6998fc94a08a9a3742eec12d' "
     "and dl_id = 'b8379e7d6998fc94a08a9a3742eec12d' "
-    "and trainer_id = 'a7e83afb3d10e49d76cbfbe16c294932'"
+    "and trainer_id = 'b4400f97d2c4a40c100d69b05687bac2' "
 )
 
 AdaptPriorResult.populate(

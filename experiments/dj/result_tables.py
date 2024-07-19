@@ -695,7 +695,7 @@ class AdaptPriorResult(dj.Computed):
 
         if self.FORCE_GPU:
             if torch.cuda.is_available():
-                device = torch.device("cuda")
+                device = torch.device("cuda:0")
             else:
                 raise ValueError("GPU not available.")
         else:
