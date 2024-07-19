@@ -144,9 +144,12 @@ def main():
     # print("Simulation for task 2 completed.")
 
     # GENERATING FLAT PRIOR DATA
-    print("Simulating data for the flat prior")
-    simulate_data(**cfg.flat_haefner)
-    print("Simulation for flat prior completed.")
+    # print("Simulating data for the flat prior")
+    # simulate_data(**cfg.flat_haefner)
+    # print("Simulation for flat prior completed.")
+
+    # GENERATING LARGE FLAT PRIOR DATA
+    simulate_data(**cfg.flat_haefner_100k)
 
 
 if __name__ == "__main__":

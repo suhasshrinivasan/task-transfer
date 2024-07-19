@@ -169,12 +169,33 @@ AdaptPriorResult.FORCE_GPU = True
 # 4. train only flow models
 # the last one is optional but helps save time
 
+# restrictions = (
+#     "orig_dl_id = 'b8379e7d6998fc94a08a9a3742eec12d' "
+#     "and dl_id = 'b8379e7d6998fc94a08a9a3742eec12d' "
+#     "and trainer_id = 'b4400f97d2c4a40c100d69b05687bac2' "
+# )
+
+# AdaptPriorResult.populate(
+#     restrictions,
+#     reserve_jobs=True,
+#     order="random",
+#     suppress_errors=True,
+# )
+
+
+# four restrictions
+# 1. train only on flat prior 100k dataset
+# 2. choose the following types of models:
+#    - exp models (seed = +/- 666)
+#    - randomly initialized flow model (seed < 0)
+#    - pre-trained flow model on 10k flat prior dataset
+# 3. choose 1,000 MC samples
+
 restrictions = (
     "orig_dl_id = 'b8379e7d6998fc94a08a9a3742eec12d' "
-    "and dl_id = 'b8379e7d6998fc94a08a9a3742eec12d' "
-    "and trainer_id = 'b4400f97d2c4a40c100d69b05687bac2' "
+    "and dl_id = 'd6b36dc9d4024882e4b7ccc597495a32' "
+    "and trainer_id = 'a7e83afb3d10e49d76cbfbe16c294932'"
 )
-
 AdaptPriorResult.populate(
     restrictions,
     reserve_jobs=True,
