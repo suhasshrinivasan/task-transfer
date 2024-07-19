@@ -58,7 +58,10 @@ def compute_logl_marginal(
 ):
     log_probs = []
     with torch.no_grad():
+        conditional = conditional.to(device)
+        prior = prior.to(device)
         conditional.eval()
+        prior.eval()
         for batch in data_loader:
             data = batch[data_dim]
             data = data.to(device)
@@ -72,10 +75,10 @@ def compute_logl_marginal(
                 torch.tensor(conditional_ll.shape[0], device=device)
             )
             log_probs.append(marginal_ll)
-            lp = reduce(log_probs, reduction)
-            lp_uncertainty = compute_uncertainty(log_probs, uncertainty)
-            lp = normalize_tensor(lp, normalize, data)
-            lp = convert_unit(lp, unit)
+        lp = reduce(log_probs, reduction)
+        lp_uncertainty = compute_uncertainty(log_probs, uncertainty)
+        lp = normalize_tensor(lp, normalize, data)
+        lp = convert_unit(lp, unit)
     return lp, lp_uncertainty
 
 

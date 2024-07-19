@@ -194,7 +194,7 @@ AdaptPriorResult.FORCE_GPU = True
 restrictions = (
     "orig_dl_id = 'b8379e7d6998fc94a08a9a3742eec12d' "
     "and dl_id = 'd6b36dc9d4024882e4b7ccc597495a32' "
-    "and trainer_id = 'a7e83afb3d10e49d76cbfbe16c294932'"
+    "and trainer_id = '918622791c883edfc59e0a058338503c'"
 )
 AdaptPriorResult.populate(
     restrictions,

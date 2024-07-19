@@ -720,7 +720,9 @@ class AdaptPriorResult(dj.Computed):
             test_prior_ll_sem,
             tracker_output,
             eval_output,
-        ) = adapt_prior(data_loader_args, model_args, trainer_args, self.USE_WANDB)
+        ) = adapt_prior(
+            data_loader_args, model_args, trainer_args, self.USE_WANDB, dj.conn()
+        )
 
         with tempfile.TemporaryDirectory() as tmp_dir:
             # save model

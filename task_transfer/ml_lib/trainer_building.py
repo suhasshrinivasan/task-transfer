@@ -124,6 +124,7 @@ def build_prior_adapt_trainer(
     logging_type,
     device,
     model_display_name,
+    dj_conn,
 ):
     loss_criterion = lambda model, batch: mc_marginal_nll(
         model, batch, data_dim, mc_sample_size
@@ -150,5 +151,6 @@ def build_prior_adapt_trainer(
         early_stopping_patience=early_stopping_patience,
         logger=train_logger,
         device=device,
+        dj_conn=dj_conn,
     )
     return trainer

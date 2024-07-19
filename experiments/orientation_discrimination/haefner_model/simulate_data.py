@@ -149,7 +149,11 @@ def main():
     # print("Simulation for flat prior completed.")
 
     # GENERATING LARGE FLAT PRIOR DATA
-    simulate_data(**cfg.flat_haefner_100k)
+    # simulate_data(**cfg.flat_haefner_100k)
+
+    # GENERATE TOY DATA
+    print("Simulating data for the toy Haefner model...")
+    simulate_data(**cfg.flat_toy_haefner)
 
 
 if __name__ == "__main__":

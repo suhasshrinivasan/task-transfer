@@ -99,3 +99,36 @@ flat_haefner_100k["plotting_params"].update(
         "xdist_figfname": figdir / "flat_haefner_100k_xdist.pdf",
     }
 )
+
+
+flat_toy_haefner = {
+    "p_c": 0.5,
+    "c1_psi": np.pi / 4,
+    "c2_psi": 3 * np.pi / 4,
+    "kappa": 1.0,
+    "g_phi": torch.tensor([0.0, np.pi / 2]),
+    "delta": 0,
+    "lam": 3.0,
+    "x_phi": torch.tensor([0.0, np.pi / 2]),  # 45 instead of 1024 original
+    "obs_sigma": 0.1,  # TODO: find out, not written in the paper
+    "obs_h": 12,  # height of image
+    "obs_w": 12,  # width of image
+    "n_samples": 10_000,
+    "seed": 42,
+    "data_fname": datadir / "flat_toy_haefner_dataset.pkl",
+    "plotting_params": {
+        "dpi": 300,
+        "fontsize": 16,
+        "linewidth": 4,
+        "tick_length": 6,
+        "tick_width": 2,
+        "task_figfname": figdir / "flat_toy_haefner_task_1.pdf",
+        "prior_figfname": figdir / "flat_toy_haefner_prior_task_1.pdf",
+        "cdist_figfname": figdir / "flat_toy_haefner_cdist_task_1.pdf",
+        "g_figfname": figdir / "flat_toy_haefner_g_task_1.pdf",
+        "x_figfname": figdir / "flat_toy_haefner_x_task_1.pdf",
+        "xcorr_figfname": figdir / "flat_toy_haefner_xcorr_task_1.pdf",
+        "xcorr_hist_figfname": figdir / "flat_toy_haefner_xcorr_hist_task_1.pdf",
+        "xdist_figfname": figdir / "flat_toy_haefner_xdist_task_1.pdf",
+    },
+}

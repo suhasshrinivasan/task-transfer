@@ -4,7 +4,9 @@ import gensn.distributions as G
 import torch
 import torch.distributions as D
 
-from task_transfer.routines import mc_marginal_log_likelihood
+from task_transfer.ml_lib.loss_criteria import mc_marginal_nll
+
+# from task_transfer.routines import mc_marginal_log_likelihood
 
 
 class TestRoutines:
@@ -68,9 +70,10 @@ class TestRoutines:
         )
         obs = torch.rand((obs_batch_dim, conditional_dim))
         true_marginal_lp = marginal(obs).mean()
-        mc_marginal_lp = mc_marginal_log_likelihood(
-            joint, obs, mc_sample_size=mc_sample_size, reduction="mean"
-        )
+        # mc_marginal_lp = mc_marginal_log_likelihood(
+        #     joint, obs, mc_sample_size=mc_sample_size, reduction="mean"
+        # )
+        mc_marginal_lp = -mc_marginal_nll(joint, [obs, obs], 0, mc_sample_size).mean()
         error = torch.abs(mc_marginal_lp - true_marginal_lp) / conditional_dim
         print(
             f"Error per dimension in {inspect.currentframe().f_code.co_name}: {error}"

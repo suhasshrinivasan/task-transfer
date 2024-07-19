@@ -30,6 +30,7 @@ class Trainer:
         eval_criterion=None,
         eval_params=None,
         eval_interval=None,
+        dj_conn=None,
     ):
         """
         Initializes the Trainer class with the given parameters.
@@ -59,8 +60,17 @@ class Trainer:
         )
         self.logger = logger
         self.device = device
+        self.dj_conn = dj_conn
 
-    def train(self, model, train_loader, val_loader, n_epochs, watch_grad_norm=False):
+    def train(
+        self,
+        model,
+        train_loader,
+        val_loader,
+        n_epochs,
+        watch_grad_norm=False,
+        ping_dj=False,
+    ):
         """
         Trains the model and applies early stopping if validation loss does not improve.
 
@@ -79,6 +89,8 @@ class Trainer:
         val_losses = []
         eval_output = None
         for epoch in range(n_epochs):
+            if ping_dj:
+                self.dj_conn.ping()
             if (self.eval_criterion is not None) and (epoch % self.eval_interval == 0):
                 eval_output = self._eval(model, val_loader, epoch)
             train_loss = self._train(model, train_loader, epoch, watch_grad_norm)

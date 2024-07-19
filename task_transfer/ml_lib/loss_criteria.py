@@ -139,20 +139,20 @@ def mc_marginal_nll(model, batch, data_dim, mc_sample_size=(1,)):
     prior_sample = model.prior.rsample(mc_sample_size)
     conditional_ll = model.conditional(data, cond=prior_sample.unsqueeze(1))
     # TODO: debug code. cleanup
-    wandb.log({"eval/cond_ll_sample_mean": conditional_ll.mean()})
+    # wandb.log({"eval/cond_ll_sample_mean": conditional_ll.mean()})
     marginal_ll = torch.logsumexp(conditional_ll, dim=0) - torch.log(
         torch.tensor(conditional_ll.shape[0])
     )
     # TODO: debug code. cleanup
-    cond_dim = 0
-    cond = batch[cond_dim]
-    conditional_ll_real = model.conditional(data, cond=cond.unsqueeze(1))
-    wandb.log({"eval/cond_ll_real_mean": conditional_ll_real.mean()})
-    marginal_ll_real = torch.logsumexp(conditional_ll_real, dim=0) - torch.log(
-        torch.tensor(conditional_ll_real.shape[0])
-    )
-    wandb.log({"eval/marg_ll_sample": marginal_ll.mean()})
-    wandb.log({"eval/marg_ll_real": marginal_ll_real.mean()})
+    # cond_dim = 0
+    # cond = batch[cond_dim]
+    # conditional_ll_real = model.conditional(data, cond=cond.unsqueeze(1))
+    # wandb.log({"eval/cond_ll_real_mean": conditional_ll_real.mean()})
+    # marginal_ll_real = torch.logsumexp(conditional_ll_real, dim=0) - torch.log(
+    # torch.tensor(conditional_ll_real.shape[0])
+    # )
+    # wandb.log({"eval/marg_ll_sample": marginal_ll.mean()})
+    # wandb.log({"eval/marg_ll_real": marginal_ll_real.mean()})
 
     return -marginal_ll
 
