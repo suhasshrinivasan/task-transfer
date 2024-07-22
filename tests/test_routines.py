@@ -17,8 +17,8 @@ class TestRoutines:
     def test_mc_marginal_log_likelihood(
         self,
         prior_dim=10,
-        conditional_dim=20,
-        mc_sample_size=(10000,),
+        conditional_dim=144,
+        mc_sample_size=(10_000,),
         obs_batch_dim=128,
         _seed=42,
         _atol_per_dim=1e-1,
@@ -75,6 +75,7 @@ class TestRoutines:
         # )
         mc_marginal_lp = -mc_marginal_nll(joint, [obs, obs], 0, mc_sample_size).mean()
         error = torch.abs(mc_marginal_lp - true_marginal_lp) / conditional_dim
+        print(f"Error in {inspect.currentframe().f_code.co_name}: {error}")
         print(
             f"Error per dimension in {inspect.currentframe().f_code.co_name}: {error}"
         )

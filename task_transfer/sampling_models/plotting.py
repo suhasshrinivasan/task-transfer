@@ -126,6 +126,7 @@ def plot_haefner_model(
     xcorr_figname="xcorr.pdf",
     xcorr_hist_figname="xcorr_hist.pdf",
     xdist_figname="xdist.pdf",
+    plot_corr=True,
 ):
 
     all_orientations = torch.linspace(0, torch.pi, steps=1000)
@@ -308,136 +309,143 @@ def plot_haefner_model(
     ax_g.legend(loc="upper right", fontsize=fontsize)
     fig_prior_x.savefig(x_figname, bbox_inches="tight", transparent=True)
 
-    # plot correlation matrix
-    xcorr = torch.corrcoef(samples_dict["x_samples"].T)
-    # consider only the lower triangle without the diagonal
-    mask = torch.triu(torch.ones_like(xcorr), diagonal=-1)
-    antimask = torch.tril(torch.ones_like(xcorr), diagonal=-1)
-    antimasked = antimask * xcorr
-    vmin = torch.min(antimasked).item()
-    vmax = torch.max(antimasked).item()
-    cbar_ticks = np.linspace(vmin, vmax, 5)
-    fig_xcorr, ax_xcorr = plt.subplots(dpi=300)
-    sns.heatmap(
-        xcorr.numpy(),
-        mask=mask.numpy(),
-        cmap="YlGn",
-        vmin=vmin,
-        vmax=vmax,
-        ax=ax_xcorr,
-        cbar_kws={"ticks": cbar_ticks},
-    )
-
-    ax_xcorr.set_xticks(np.arange(0, model.n_x, 11))
-    ax_xcorr.set_yticks(np.arange(0, model.n_x, 11))
-
-    xticklabels = ax_xcorr.set_xticklabels(
-        [f"${int(np.rad2deg(x))}^\\circ$" for x in model.x_phi[::11]]
-    )
-    yticklabels = ax_xcorr.set_yticklabels(
-        [f"${int(np.rad2deg(x))}^\\circ$" for x in model.x_phi[::11]]
-    )
-
-    cbar = ax_xcorr.collections[0].colorbar
-    # here set the labelsize by 20
-    cbar.ax.tick_params(labelsize=fontsize)
-    cbar.set_ticklabels([f"{x * 100:.1f}%" for x in cbar_ticks])
-    ax_xcorr.tick_params(
-        axis="both",
-        which="major",
-        labelsize=fontsize,
-        length=tick_length,
-        width=tick_width,
-    )
-
-    ax_xcorr.set_ylabel("Preferred orientation $\\psi^x$", fontsize=fontsize)
-    ax_xcorr.set_xlabel("Preferred orientation $\\psi^x$", fontsize=fontsize)
-    ax_xcorr.set_title("Pearson correlation of $x$ (prior)", fontsize=fontsize)
-
-    fig_xcorr.savefig(xcorr_figname, bbox_inches="tight", transparent=True)
-
-    fig_xcorr_hist, ax_xcorr_hist = plt.subplots(dpi=dpi)
-    sns.histplot(
-        torch.masked_select(xcorr, antimask.bool()),
-        ax=ax_xcorr_hist,
-        stat="probability",
-        element="step",
-        # kde=True,
-        color="green",
-        # label="No task",
-        alpha=0.5,
-        label="",
-    )
-    ax_xcorr_hist.tick_params(
-        axis="both",
-        which="major",
-        labelsize=fontsize,
-        length=tick_length,
-        width=tick_width,
-    )
-    ax_xcorr_hist.set_xlabel("Pearson correlation of $x$ (prior)", fontsize=fontsize)
-    ax_xcorr_hist.set_ylabel("Probability", fontsize=fontsize)
-    ax_xcorr_hist.set_xticks(cbar_ticks)
-    ax_xcorr_hist.set_xticklabels([f"{x * 100:.1f}%" for x in cbar_ticks])
-
-    sns.despine(ax=ax_xcorr_hist, trim=True)
-    # ax_xcorr_hist.spines['left'].set_visible(False)
-    ax_xcorr_hist.spines[["bottom", "left"]].set_linewidth(tick_width)
-
-    fig_xcorr_hist.savefig(xcorr_hist_figname, bbox_inches="tight", transparent=True)
-
-    ids = np.arange(0, model.n_x, step=model.n_x / 4).astype("int")
-
-    fig_xdist, axs_dist = plt.subplots(2, 2, dpi=dpi, sharex=True, sharey=True)
-    for ax, idx in zip(axs_dist.flatten(), ids):
-        sns.histplot(
-            samples_dict["x_samples"][:, idx],
-            ax=ax,
-            stat="density",
-            element="step",
-            # kde=True,
-            color="darkorange",
-            # label="No task",
-            alpha=0.8,
-            # linewidth=linewidth,
+    if plot_corr:
+        # plot correlation matrix
+        xcorr = torch.corrcoef(samples_dict["x_samples"].T)
+        # consider only the lower triangle without the diagonal
+        mask = torch.triu(torch.ones_like(xcorr), diagonal=-1)
+        antimask = torch.tril(torch.ones_like(xcorr), diagonal=-1)
+        antimasked = antimask * xcorr
+        vmin = torch.min(antimasked).item()
+        vmax = torch.max(antimasked).item()
+        cbar_ticks = np.linspace(vmin, vmax, 5)
+        fig_xcorr, ax_xcorr = plt.subplots(dpi=300)
+        sns.heatmap(
+            xcorr.numpy(),
+            mask=mask.numpy(),
+            cmap="YlGn",
+            vmin=vmin,
+            vmax=vmax,
+            ax=ax_xcorr,
+            cbar_kws={"ticks": cbar_ticks},
         )
-        ax.text(
-            0.7,
-            0.9,
-            f"$\\Psi^x=${int(np.rad2deg(model.x_phi[idx]))}$^\circ$",
-            horizontalalignment="center",
-            verticalalignment="center",
-            transform=ax.transAxes,
-            fontsize=fontsize,
+
+        ax_xcorr.set_xticks(np.arange(0, model.n_x, 11))
+        ax_xcorr.set_yticks(np.arange(0, model.n_x, 11))
+
+        xticklabels = ax_xcorr.set_xticklabels(
+            [f"${int(np.rad2deg(x))}^\\circ$" for x in model.x_phi[::11]]
         )
-        mean_samples = torch.mean(samples_dict["x_samples"][:, idx])
-        ax.axvline(mean_samples, color="red", linestyle="dotted", linewidth=linewidth)
-        ax.text(
-            0.7,
-            0.7,
-            f"$\\lambda=${mean_samples:.2f}",
-            horizontalalignment="center",
-            verticalalignment="center",
-            transform=ax.transAxes,
-            fontsize=fontsize,
-            color="red",
-            label="Mean",
+        yticklabels = ax_xcorr.set_yticklabels(
+            [f"${int(np.rad2deg(x))}^\\circ$" for x in model.x_phi[::11]]
         )
-        ax.set_xlim([0, 6])
-        ax.set_ylim([0, 1])
-        ax.set_xticks(np.arange(0, 7, step=3))
-        ax.set_yticks([0, 0.5, 1])
-        ax.tick_params(
+
+        cbar = ax_xcorr.collections[0].colorbar
+        # here set the labelsize by 20
+        cbar.ax.tick_params(labelsize=fontsize)
+        cbar.set_ticklabels([f"{x * 100:.1f}%" for x in cbar_ticks])
+        ax_xcorr.tick_params(
             axis="both",
-            which="both",
+            which="major",
             labelsize=fontsize,
             length=tick_length,
             width=tick_width,
         )
-        ax.set_ylabel("Density", fontsize=fontsize)
-        ax.set_xlabel("Firing rate", fontsize=fontsize)
-        sns.despine(ax=ax)
-        ax.spines[["left", "bottom"]].set_linewidth(tick_width)
-        # ax.axis("equal")
-    fig_xdist.suptitle("Prior distribution of $x$ firing rates", fontsize=fontsize)
-    fig_xdist.savefig(xdist_figname, bbox_inches="tight", transparent=True)
+
+        ax_xcorr.set_ylabel("Preferred orientation $\\psi^x$", fontsize=fontsize)
+        ax_xcorr.set_xlabel("Preferred orientation $\\psi^x$", fontsize=fontsize)
+        ax_xcorr.set_title("Pearson correlation of $x$ (prior)", fontsize=fontsize)
+
+        fig_xcorr.savefig(xcorr_figname, bbox_inches="tight", transparent=True)
+
+        fig_xcorr_hist, ax_xcorr_hist = plt.subplots(dpi=dpi)
+        sns.histplot(
+            torch.masked_select(xcorr, antimask.bool()),
+            ax=ax_xcorr_hist,
+            stat="probability",
+            element="step",
+            # kde=True,
+            color="green",
+            # label="No task",
+            alpha=0.5,
+            label="",
+        )
+        ax_xcorr_hist.tick_params(
+            axis="both",
+            which="major",
+            labelsize=fontsize,
+            length=tick_length,
+            width=tick_width,
+        )
+        ax_xcorr_hist.set_xlabel(
+            "Pearson correlation of $x$ (prior)", fontsize=fontsize
+        )
+        ax_xcorr_hist.set_ylabel("Probability", fontsize=fontsize)
+        ax_xcorr_hist.set_xticks(cbar_ticks)
+        ax_xcorr_hist.set_xticklabels([f"{x * 100:.1f}%" for x in cbar_ticks])
+
+        sns.despine(ax=ax_xcorr_hist, trim=True)
+        # ax_xcorr_hist.spines['left'].set_visible(False)
+        ax_xcorr_hist.spines[["bottom", "left"]].set_linewidth(tick_width)
+
+        fig_xcorr_hist.savefig(
+            xcorr_hist_figname, bbox_inches="tight", transparent=True
+        )
+
+        ids = np.arange(0, model.n_x, step=model.n_x / 4).astype("int")
+
+        fig_xdist, axs_dist = plt.subplots(2, 2, dpi=dpi, sharex=True, sharey=True)
+        for ax, idx in zip(axs_dist.flatten(), ids):
+            sns.histplot(
+                samples_dict["x_samples"][:, idx],
+                ax=ax,
+                stat="density",
+                element="step",
+                # kde=True,
+                color="darkorange",
+                # label="No task",
+                alpha=0.8,
+                # linewidth=linewidth,
+            )
+            ax.text(
+                0.7,
+                0.9,
+                f"$\\Psi^x=${int(np.rad2deg(model.x_phi[idx]))}$^\circ$",
+                horizontalalignment="center",
+                verticalalignment="center",
+                transform=ax.transAxes,
+                fontsize=fontsize,
+            )
+            mean_samples = torch.mean(samples_dict["x_samples"][:, idx])
+            ax.axvline(
+                mean_samples, color="red", linestyle="dotted", linewidth=linewidth
+            )
+            ax.text(
+                0.7,
+                0.7,
+                f"$\\lambda=${mean_samples:.2f}",
+                horizontalalignment="center",
+                verticalalignment="center",
+                transform=ax.transAxes,
+                fontsize=fontsize,
+                color="red",
+                label="Mean",
+            )
+            ax.set_xlim([0, 6])
+            ax.set_ylim([0, 1])
+            ax.set_xticks(np.arange(0, 7, step=3))
+            ax.set_yticks([0, 0.5, 1])
+            ax.tick_params(
+                axis="both",
+                which="both",
+                labelsize=fontsize,
+                length=tick_length,
+                width=tick_width,
+            )
+            ax.set_ylabel("Density", fontsize=fontsize)
+            ax.set_xlabel("Firing rate", fontsize=fontsize)
+            sns.despine(ax=ax)
+            ax.spines[["left", "bottom"]].set_linewidth(tick_width)
+            # ax.axis("equal")
+        fig_xdist.suptitle("Prior distribution of $x$ firing rates", fontsize=fontsize)
+        fig_xdist.savefig(xdist_figname, bbox_inches="tight", transparent=True)

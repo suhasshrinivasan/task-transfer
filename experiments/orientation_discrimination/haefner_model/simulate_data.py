@@ -122,6 +122,7 @@ def simulate_data(
         xcorr_figname=plotting_params["xcorr_figfname"],
         xcorr_hist_figname=plotting_params["xcorr_hist_figfname"],
         xdist_figname=plotting_params["xdist_figfname"],
+        plot_corr=plotting_params.get("plot_corr", True),
     )
     print("Haefner model plots generated.")
 
@@ -152,8 +153,23 @@ def main():
     # simulate_data(**cfg.flat_haefner_100k)
 
     # GENERATE TOY DATA
-    print("Simulating data for the toy Haefner model...")
-    simulate_data(**cfg.flat_toy_haefner)
+    # print("Simulating data for the toy Haefner model...")
+    # simulate_data(**cfg.flat_toy_haefner)
+
+    # GENERATE 1D TOY DATA
+    # print("Simulating data for the 1D toy Haefner model...")
+    # simulate_data(**cfg.flat_toy_1neuron_haefner)
+
+    # print("Simulating data for the 2D toy Haefner model...")
+    # simulate_data(**cfg.flat_toy_2neuron_haefner)
+
+    # print("Simulating data for the 3D toy Haefner model...")
+    # simulate_data(**cfg.flat_toy_3neuron_haefner)
+
+    # print("Simulating data for the 3D toy Haefner model...")
+    # simulate_data(**cfg.flat_toy_10neuron_haefner)
+
+    print("uncomment the code to generate data")
 
 
 if __name__ == "__main__":

@@ -111,7 +111,7 @@ def adapt_prior(
         val_loader=val_loader,
         n_epochs=trainer_args["n_epochs"],
         watch_grad_norm=False,
-        ping_dj=True,
+        ping_dj=False if dj_conn is None else True,
     )
 
     tracker_output = trainer_output["tracker_output"]
