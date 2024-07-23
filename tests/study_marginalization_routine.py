@@ -45,10 +45,13 @@ def test_mc_marginal_log_likelihood(
     mu_prior = torch.rand((prior_dim,))
     # cov_prior = torch.rand((prior_dim, prior_dim))
     # cov_prior = cov_prior @ cov_prior.T + 1e-6 * torch.eye(prior_dim)
-    cov_prior = torch.Tensor(make_spd_matrix(prior_dim))
-    prior = G.TrainableDistributionAdapter(
-        D.MultivariateNormal, loc=mu_prior, covariance_matrix=cov_prior
-    )
+    # cov_prior = torch.Tensor(make_spd_matrix(prior_dim))
+    # cov_prior = torch.eye(prior_dim) * torch.randn(prior_dim) ** 2
+    # prior = G.TrainableDistributionAdapter(
+    #     D.MultivariateNormal, loc=mu_prior, covariance_matrix=cov_prior
+    # )
+    cov_prior = torch.eye(prior_dim)
+    prior = G.IndependentNormal(loc=mu_prior, scale=torch.sqrt(cov_prior.diag()))
     mu_x_z_fn = torch.nn.Linear(prior_dim, conditional_dim)
     mu_x_z_fn.weight.data = torch.rand(conditional_dim, prior_dim)
     mu_x_z_fn.bias.data = torch.rand(conditional_dim)
@@ -71,7 +74,7 @@ def test_mc_marginal_log_likelihood(
     marginal = G.TrainableDistributionAdapter(
         D.MultivariateNormal, loc=marginal_mu, covariance_matrix=marginal_cov
     )
-    obs = torch.rand((obs_batch_dim, conditional_dim))
+    obs = torch.randn((obs_batch_dim, conditional_dim))
     true_marginal_lp = marginal(obs).mean()
     # mc_marginal_lp = mc_marginal_log_likelihood(
     #     joint, obs, mc_sample_size=mc_sample_size, reduction="mean"
@@ -81,11 +84,34 @@ def test_mc_marginal_log_likelihood(
     return error.item()
 
 
+# param_configs = dict_product(
+#     {
+#         "prior_dim": [1, 5, 10, 50, 100, 500, 1000],
+#         "conditional_dim": [1, 5, 10, 50, 100, 500, 1000],
+#         "mc_sample_size": [(1,), (5,), (10,), (50,), (100,), (1000,)],
+#         "obs_batch_dim": [128],
+#         "_seed": [42],
+#     },
+#     insert_hash=False,
+# )
+
 param_configs = dict_product(
     {
-        "prior_dim": [1, 5, 10, 50, 100, 500, 1000],
-        "conditional_dim": [1, 5, 10, 50, 100, 500, 1000],
-        "mc_sample_size": [(1,), (5,), (10,), (50,), (100,), (1000,)],
+        "prior_dim": [50],
+        "conditional_dim": [100],
+        "mc_sample_size": [
+            (1,),
+            (5,),
+            (10,),
+            (50,),
+            (100,),
+            (500,),
+            (1000,),
+            (5_000,),
+            (10_000,),
+            (50_000,),
+            (100_000,),
+        ],
         "obs_batch_dim": [128],
         "_seed": [42],
     },
@@ -93,13 +119,21 @@ param_configs = dict_product(
 )
 
 
-success_configs = []
+prior_dims = []
+conditional_dims = []
+mc_sample_sizes = []
+obs_batch_dims = []
+seeds = []
 errors = []
 for param_config in param_configs:
     try:
         error = test_mc_marginal_log_likelihood(**param_config)
         errors.append(error)
-        success_configs.append(param_config)
+        prior_dims.append(param_config["prior_dim"])
+        conditional_dims.append(param_config["conditional_dim"])
+        mc_sample_sizes.append(param_config["mc_sample_size"][0])
+        obs_batch_dims.append(param_config["obs_batch_dim"])
+        seeds.append(param_config["_seed"])
     except Exception as e:
         print("Failed config:", param_config)
         print(e)
@@ -107,8 +141,12 @@ for param_config in param_configs:
 result = OrderedDict(
     {
         "errors": errors,
-        "param_configs": success_configs,
+        "prior_dim": prior_dims,
+        "conditional_dim": conditional_dims,
+        "mc_sample_size": mc_sample_sizes,
+        "obs_batch_dim": obs_batch_dims,
+        "seed": seeds,
     }
 )
-with open("test_mc_marginal_log_likelihood.json", "w") as f:
+with open("test_mc_diag_prior_mc_size.json", "w") as f:
     json.dump(result, f, indent=2)
