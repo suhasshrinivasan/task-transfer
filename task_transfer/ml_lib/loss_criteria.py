@@ -56,7 +56,6 @@ def conditional_nll(model, batch, data_dim, cond_dim, add_eps=False):
     return nll
 
 
-# TODO: self written. use this!
 def mc_marginal_nll(model, batch, data_dim, mc_sample_size=(1,)):
     """
     Marginalize out the prior distribution to obtain the marginal negative log-likelihood of the data
