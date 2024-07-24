@@ -72,7 +72,6 @@ def mc_marginal_nll(model, batch, data_dim, mc_sample_size=(1,)):
         batch (torch.Tensor): The batch of data of shape (batch_size, data_dim).
         data_dim (int): The dimensionality of the data.
         mc_sample_size (torch.Size): The size of the Monte Carlo samples.
-        reduction (str): The reduction method. Default is "none".
 
     Returns:
         torch.Tensor: The marginal negative log-likelihood of the batch of data
