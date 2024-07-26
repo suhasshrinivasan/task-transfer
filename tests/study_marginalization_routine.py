@@ -90,7 +90,7 @@ def test_mc_marginal_log_likelihood(
     joint = G.Joint(prior=prior, conditional=conditional)
     marginal_mu = mu_prior @ mu_x_z_fn.weight.data.T + mu_x_z_fn.bias.data
     marginal_cov = mu_x_z_fn.weight.data @ cov_prior @ mu_x_z_fn.weight.data.T + cov_x_z
-    marginal = G.TrainableDistributionAdapter(
+    marginal = G.TrainableDistrigbutionAdapter(
         D.MultivariateNormal, loc=marginal_mu, covariance_matrix=marginal_cov
     )
     obs = marginal.sample((obs_batch_dim,))
