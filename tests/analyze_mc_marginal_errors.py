@@ -3,9 +3,6 @@ import pandas as pd
 data = pd.read_json("test_mc_marginal_log_likelihood.json", orient="json")
 
 
-data
-
-
 import numpy as np
 
 data["log_errors"] = np.log(data["errors"])

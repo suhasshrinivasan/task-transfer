@@ -1,0 +1,8 @@
+{
+  "errors": [],
+  "prior_dim": [],
+  "conditional_dim": [],
+  "mc_sample_size": [],
+  "obs_batch_dim": [],
+  "seed": []
+}

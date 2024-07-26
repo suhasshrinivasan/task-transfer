@@ -154,3 +154,10 @@ def build_prior_adapt_trainer(
         dj_conn=dj_conn,
     )
     return trainer
+
+
+def build_prior_varposterior_trainer(
+    joint_model,
+    varposterior,
+):
+    pass

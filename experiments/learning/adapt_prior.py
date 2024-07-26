@@ -195,3 +195,9 @@ def adapt_prior(
         tracker_output,
         eval_output,
     )
+
+
+# def adapt_prior_varposterior(
+#     data_loader_args, model_args, trainer_args, use_wandb=False, dj_conn=None
+# ):
+#     pass
