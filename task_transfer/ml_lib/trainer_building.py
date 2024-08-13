@@ -156,8 +156,19 @@ def build_prior_adapt_trainer(
     return trainer
 
 
-def build_prior_varposterior_trainer(
-    joint_model,
-    varposterior,
+def build_vpost_prior_trainer(
+    model,
+    data_dim,
+    latent_dim,
+    loss_type,
+    lr,
+    weight_decay,
+    eval_criterion,
+    eval_params,
+    eval_interval,
+    logging_type,
+    device,
+    model_display_name,
+    dj_conn,
 ):
     pass
