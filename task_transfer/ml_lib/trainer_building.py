@@ -1,7 +1,12 @@
 import torch
 from torch.optim import Adam
 
-from .loss_criteria import conditional_nll, marginal_nll, mc_marginal_nll
+from .loss_criteria import (
+    conditional_nll,
+    marginal_nll,
+    mc_marginal_nll,
+    variational_nll,
+)
 from .trainer import Trainer
 from .training_tools import TrainLogger
 
@@ -159,16 +164,48 @@ def build_prior_adapt_trainer(
 def build_vpost_prior_trainer(
     model,
     data_dim,
-    latent_dim,
-    loss_type,
+    n_bound_samples,
     lr,
     weight_decay,
     eval_criterion,
     eval_params,
     eval_interval,
+    early_stopping_threshold,
+    early_stopping_patience,
     logging_type,
     device,
     model_display_name,
     dj_conn,
 ):
-    pass
+    # train the variational posterior and the prior
+    # keep the likelihood fixed (and generally pre-trained)
+    loss_criterion = lambda model, batch: variational_nll(
+        model, batch, data_dim, n_bound_samples
+    )
+    # only pass the parameters of the variational posterior and the prior to the optimizer
+    params_to_train = list(model.posterior.parameters()) + list(
+        model.joint.prior.parameters()
+    )  # this keeps the likelihood parameters off the optimizer
+    optimizer = Adam(
+        params_to_train,
+        lr=lr,
+        weight_decay=weight_decay,
+    )
+    train_logger = TrainLogger(
+        model_display_name=model_display_name,
+        logging_type=logging_type,
+    )
+    trainer = Trainer(
+        loss_criterion=loss_criterion,
+        eval_criterion=eval_criterion,
+        eval_params=eval_params,
+        eval_interval=eval_interval,
+        optimizer=optimizer,
+        lr=lr,
+        early_stopping_threshold=early_stopping_threshold,
+        early_stopping_patience=early_stopping_patience,
+        logger=train_logger,
+        device=device,
+        dj_conn=dj_conn,
+    )
+    return trainer

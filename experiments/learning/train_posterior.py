@@ -5,10 +5,11 @@ from gensn.variational import VariationalBound
 
 import wandb
 from task_transfer.evaluation.evaluate_generative_model import (
-    adapt_prior_eval_criterion,
     compute_logl,
+    compute_var_marginal,
     logl_conditional,
     logl_mc_marginal,
+    vpost_prior_eval_criterion,
 )
 from task_transfer.ml_lib.data_loading import (
     build_dataloaders,
@@ -22,7 +23,7 @@ from task_transfer.ml_lib.model_building import (
 )
 from task_transfer.ml_lib.trainer_building import (
     build_conditional_trainer,
-    build_prior_adapt_trainer,
+    build_vpost_prior_trainer,
 )
 
 
@@ -211,7 +212,7 @@ def train_vpost_prior(
     # build approximate posterior
     if model_args["posterior_dist"] == "gamma":
         amortization_fn = build_conc_rate_mlp(
-            in_features=model_args["cond_dim"],
+            in_features=n_image_dims,
             out_features_core=n_response_dims,
             out_features_conc=n_response_dims,
             out_features_rate=n_response_dims,
@@ -278,17 +279,28 @@ def train_vpost_prior(
     )
 
     eval_interval = 1
-    eval_params = {}
+    eval_params = {
+        "response_dim": response_dim,
+        "image_dim": image_dim,
+        "reduction": "mean",
+        "uncertainty": "sem",
+        "normalize": "none",
+        "unit": "nats",
+        "add_eps_to_data_dim": model_args["posterior_zero_avoiding"],
+    }
     # build trainer
     trainer = build_vpost_prior_trainer(
         model=variational_model,
         data_dim=image_dim,
         loss_type=trainer_args["loss_type"],
+        n_bound_samples=trainer_args["n_bound_samples"],
         lr=trainer_args["lr"],
         weight_decay=trainer_args["weight_decay"],
         eval_criterion=vpost_prior_eval_criterion,
         eval_interval=eval_interval,
         eval_params=eval_params,
+        early_stopping_threshold=trainer_args["early_stopping_threshold"],
+        early_stopping_patience=trainer_args["early_stopping_patience"],
         logging_type="wandb" if use_wandb else "stdout",
         device=trainer_args["device"],
         model_display_name="vpost_prior",
@@ -320,74 +332,124 @@ def train_vpost_prior(
         # 1. variational bound
         variational_model.eval()
         train_var_marginal_mean, train_var_marginal_sem = compute_var_marginal(
-            model=variational_model,
+            var_model=variational_model,
             data_loader=train_loader,
             data_dim=image_dim,
             n_samples=n_eval_samples,
+            bound_type=trainer_args["loss_type"],
             device=trainer.device,
+            reduction="mean",
+            uncertainty="sem",
+            normalize="none",
+            unit="nats",
         )
         val_var_marginal_mean, val_var_marginal_sem = compute_var_marginal(
-            model=variational_model,
+            var_model=variational_model,
             data_loader=val_loader,
             data_dim=image_dim,
             n_samples=n_eval_samples,
+            bound_type=trainer_args["loss_type"],
             device=trainer.device,
+            reduction="mean",
+            uncertainty="sem",
+            normalize="none",
+            unit="nats",
         )
         test_var_marginal_mean, test_var_marginal_sem = compute_var_marginal(
-            model=variational_model,
+            var_model=variational_model,
             data_loader=test_loader,
             data_dim=image_dim,
             n_samples=n_eval_samples,
+            bound_type=trainer_args["loss_type"],
             device=trainer.device,
+            reduction="mean",
+            uncertainty="sem",
+            normalize="none",
+            unit="nats",
         )
 
         # 2. marginalized log likelihood
         train_marginal_obs_ll_mean, train_marginal_obs_ll_sem = logl_mc_marginal(
-            joint,
+            variational_model.joint,
             train_loader,
             data_dim=image_dim,
             mc_sample_size=n_eval_samples,
             device=trainer_args["device"],
+            reduction="mean",
+            uncertainty="sem",
+            normalize="none",
+            unit="nats",
         )
 
         val_marginal_obs_ll_mean, val_marginal_obs_ll_sem = logl_mc_marginal(
-            joint,
+            variational_model.joint,
             val_loader,
             data_dim=image_dim,
             mc_sample_size=n_eval_samples,
             device=trainer_args["device"],
+            reduction="mean",
+            uncertainty="sem",
+            normalize="none",
+            unit="nats",
         )
 
         test_marginal_obs_ll_mean, test_marginal_obs_ll_sem = logl_mc_marginal(
-            joint,
+            variational_model.joint,
             test_loader,
             data_dim=image_dim,
             mc_sample_size=n_eval_samples,
             device=trainer_args["device"],
+            reduction="mean",
+            uncertainty="sem",
+            normalize="none",
+            unit="nats",
         )
 
-        train_ll_mean_real, train_ll_sem_real = logl_conditional(
-            model=model,
-            data_loader=real_train_loader,
+        # 3. posterior log likelihood on recorded latent (neuron) data
+        train_post_ll_mean, train_post_ll_sem = compute_logl(
+            model=variational_model.posterior,
+            data_loader=train_loader,
             data_dim=response_dim,
             cond_dim=image_dim,
             device=trainer.device,
+            reduction="mean",
+            uncertainty="sem",
+            normalize="none",
+            unit="nats",
+            add_eps_to_data_dim=model_args[
+                "posterior_zero_avoiding"
+            ],  # necessary for certain distributions (e.g. gamma)
         )
-        val_ll_mean_real, val_ll_sem_real = logl_conditional(
-            model=model,
-            data_loader=real_val_loader,
+        val_post_ll_mean, val_post_ll_sem = compute_logl(
+            model=variational_model.posterior,
+            data_loader=val_loader,
             data_dim=response_dim,
             cond_dim=image_dim,
             device=trainer.device,
+            reduction="mean",
+            uncertainty="sem",
+            normalize="none",
+            unit="nats",
+            add_eps_to_data_dim=model_args[
+                "posterior_zero_avoiding"
+            ],  # necessary for certain distributions (e.g. gamma)
         )
-        test_ll_mean_real, test_ll_sem_real = logl_conditional(
-            model=model,
-            data_loader=real_test_loader,
+        test_post_ll_mean, test_post_ll_sem = compute_logl(
+            model=variational_model.posterior,
+            data_loader=test_loader,
             data_dim=response_dim,
             cond_dim=image_dim,
             device=trainer.device,
+            reduction="mean",
+            uncertainty="sem",
+            normalize="none",
+            unit="nats",
+            add_eps_to_data_dim=model_args[
+                "posterior_zero_avoiding"
+            ],  # necessary for certain distributions (e.g. gamma)
         )
 
+        # 4. prior log likelihood on recorded latent (neuron) data
         train_prior_ll_mean, train_prior_ll_sem = compute_logl(
             joint.prior,
             train_loader,
@@ -399,7 +461,6 @@ def train_vpost_prior(
             normalize="none",
             unit="nats",
         )
-
         val_prior_ll_mean, val_prior_ll_sem = compute_logl(
             joint.prior,
             val_loader,
@@ -411,7 +472,6 @@ def train_vpost_prior(
             normalize="none",
             unit="nats",
         )
-
         test_prior_ll_mean, test_prior_ll_sem = compute_logl(
             joint.prior,
             test_loader,
@@ -423,3 +483,33 @@ def train_vpost_prior(
             normalize="none",
             unit="nats",
         )
+
+    return (
+        variational_model,
+        train_var_marginal_mean,
+        train_var_marginal_sem,
+        val_var_marginal_mean,
+        val_var_marginal_sem,
+        test_var_marginal_mean,
+        test_var_marginal_sem,
+        train_marginal_obs_ll_mean,
+        train_marginal_obs_ll_sem,
+        val_marginal_obs_ll_mean,
+        val_marginal_obs_ll_sem,
+        test_marginal_obs_ll_mean,
+        test_marginal_obs_ll_sem,
+        train_post_ll_mean,
+        train_post_ll_sem,
+        val_post_ll_mean,
+        val_post_ll_sem,
+        test_post_ll_mean,
+        test_post_ll_sem,
+        train_prior_ll_mean,
+        train_prior_ll_sem,
+        val_prior_ll_mean,
+        val_prior_ll_sem,
+        test_prior_ll_mean,
+        test_prior_ll_sem,
+        tracker_output,
+        eval_output,
+    )

@@ -16,6 +16,35 @@ from ..ml_lib.loss_criteria import (
 from ..utils.utils import compute_uncertainty, convert_unit, normalize_tensor, reduce
 
 
+def compute_var_marginal(
+    var_model,
+    data_loader,
+    data_dim,
+    n_samples,
+    bound_type,
+    device="cpu",
+    reduction="mean",
+    uncertainty="sem",
+    normalize="none",
+    unit="nats",
+):
+    log_probs = []
+    with torch.no_grad():
+        var_model.eval()
+        var_model = var_model.to(device)
+        for batch in data_loader:
+            data = batch[data_dim].to(device)
+            log_prob = -var_model.compute_bound(
+                data, n_samples=n_samples, bound_type=bound_type
+            )
+            log_probs.append(log_prob)
+    lp = reduce(log_probs, reduction)
+    lp_uncertainty = compute_uncertainty(log_probs, uncertainty)
+    lp = normalize_tensor(lp, normalize, data)
+    lp = convert_unit(lp, unit)
+    return lp, lp_uncertainty
+
+
 def compute_logl_data_marginal(
     conditional_model,
     data_loader,
@@ -28,14 +57,17 @@ def compute_logl_data_marginal(
     unit="nats",
 ):
     log_probs = []
-    for batch in data_loader:
-        data = batch[data_dim].to(device)
-        cond = batch[cond_dim].to(device)
-        conditional_ll = conditional_model(data, cond=cond.unsqueeze(1))
-        marginal_ll = torch.logsumexp(conditional_ll, dim=0) - torch.log(
-            torch.tensor(conditional_ll.shape[0])
-        )
-        log_probs.append(marginal_ll)
+    with torch.no_grad():
+        conditional_model.eval()
+        conditional_model = conditional_model.to(device)
+        for batch in data_loader:
+            data = batch[data_dim].to(device)
+            cond = batch[cond_dim].to(device)
+            conditional_ll = conditional_model(data, cond=cond.unsqueeze(1))
+            marginal_ll = torch.logsumexp(conditional_ll, dim=0) - torch.log(
+                torch.tensor(conditional_ll.shape[0])
+            )
+            log_probs.append(marginal_ll)
     lp = reduce(log_probs, reduction)
     lp_uncertainty = compute_uncertainty(log_probs, uncertainty)
     lp = normalize_tensor(lp, normalize, data)
@@ -127,6 +159,83 @@ def adapt_prior_eval_criterion(model, data_loader, epoch, device, eval_params, l
     return metrics
 
 
+def prior_eval_criterion(prior_model, data_loader, epoch, device, eval_params, logger):
+    prior_ll_mean, prior_ll_sem = compute_logl(
+        model=prior_model,
+        data_loader=data_loader,
+        data_dim=eval_params["response_dim"],
+        cond_dim=None,
+        device=device,
+        reduction=eval_params["reduction"],
+        uncertainty=eval_params["uncertainty"],
+        normalize=eval_params["normalize"],
+        unit=eval_params["unit"],
+    )
+    metrics = {
+        "eval/prior_ll_mean": prior_ll_mean,
+        "eval/prior_ll_sem": prior_ll_sem,
+    }
+    track_message = f"Epoch {epoch} evaluation"
+    logger.log(metrics, track_message)
+    return metrics
+
+
+def conditional_eval_criterion(
+    conditional_model, data_loader, epoch, device, eval_params, logger
+):
+    cond_ll_mean, cond_ll_sem = compute_logl(
+        model=conditional_model,
+        data_loader=data_loader,
+        data_dim=eval_params["image_dim"],
+        cond_dim=eval_params["response_dim"],
+        device=device,
+        reduction=eval_params["reduction"],
+        uncertainty=eval_params["uncertainty"],
+        normalize=eval_params["normalize"],
+        unit=eval_params["unit"],
+    )
+    metrics = {"eval/cond_ll_mean": cond_ll_mean, "eval/cond_ll_sem": cond_ll_sem}
+    track_message = f"Epoch {epoch} evaluation"
+    logger.log(metrics, track_message)
+    return metrics
+
+
+def posterior_eval_criterion(
+    posterior_model, data_loader, epoch, device, eval_params, logger
+):
+    posterior_ll_mean, posterior_ll_sem = compute_logl(
+        model=posterior_model,
+        data_loader=data_loader,
+        data_dim=eval_params["response_dim"],
+        cond_dim=eval_params["image_dim"],
+        device=device,
+        reduction=eval_params["reduction"],
+        uncertainty=eval_params["uncertainty"],
+        normalize=eval_params["normalize"],
+        unit=eval_params["unit"],
+        add_eps_to_data_dim=eval_params["add_eps_to_data_dim"],
+    )
+    metrics = {
+        "eval/posterior_ll_mean": posterior_ll_mean,
+        "eval/posterior_ll_sem": posterior_ll_sem,
+    }
+    track_message = f"Epoch {epoch} evaluation"
+    logger.log(metrics, track_message)
+    return metrics
+
+
+def vpost_prior_eval_criterion(
+    var_model, data_loader, epoch, device, eval_params, logger
+):
+    prior_metrics = prior_eval_criterion(
+        var_model.joint.prior, data_loader, epoch, device, eval_params, logger
+    )
+    post_metrics = posterior_eval_criterion(
+        var_model.posterior, data_loader, epoch, device, eval_params, logger
+    )
+    return {**prior_metrics, **post_metrics}
+
+
 def compute_joint_logl(
     model,
     data_loader,
@@ -183,21 +292,26 @@ def compute_logl(
     uncertainty="sem",
     normalize="none",
     unit="nats",
+    add_eps_to_data_dim=False,
 ):
     if cond_dim is None:
         logl_fn = lambda model, batch, data_dim, cond_dim: marginal_nll(
             model, batch, data_dim
-        )
+        )  # here the model is the marginal model
     else:
         logl_fn = lambda model, batch, data_dim, cond_dim: conditional_nll(
             model, batch, data_dim, cond_dim
-        )
+        )  # here the model is the conditional model
     log_probs = []
     with torch.no_grad():
         model.eval()
         model = model.to(device)
         for batch in data_loader:
             batch = [b.to(device) for b in batch]
+            if add_eps_to_data_dim:
+                batch[data_dim] = (
+                    batch[data_dim] + torch.finfo(batch[data_dim].dtype).eps
+                )
             log_prob = -logl_fn(model, batch, data_dim, cond_dim)
             log_probs.append(log_prob)
         if reduction == "mean":
