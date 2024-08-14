@@ -1,3 +1,4 @@
+import inspect
 import pickle
 import tempfile
 from pathlib import Path
@@ -10,12 +11,12 @@ from task_transfer.utils.utils import make_hash
 from ..learning.adapt_prior import adapt_prior
 from ..learning.train_flow_prior import train_flow_prior
 from ..learning.train_likelihood import train_likelihood
-from ..learning.train_posterior import train_sbvp
+from ..learning.train_posterior import train_sbvp, train_vpost_prior
 from ..learning.train_sysident import train_sysident
 from .dataloader_tables import AltDataLoaderConfig, DataLoaderConfig
 from .dj_helpers import fetch_prior_cond_samples_path
 from .likelihood_tables import LikelihoodConfig
-from .posterior_tables import SBVGPConfig
+from .posterior_tables import SBVGPConfig, VPostPriorConfig
 from .prior_tables import AdaptPriorConfig, FlowPriorConfig
 from .schema import schema
 from .sysident_tables import SIConfig
@@ -25,6 +26,7 @@ from .trainer_tables import (
     LLTrainerConfig,
     SBVGPTrainerConfig,
     SITrainerConfig,
+    VPTrainerConfig,
 )
 
 
@@ -751,6 +753,203 @@ class AdaptPriorResult(dj.Computed):
                     "val_marginal_obs_ll_sem": val_marginal_obs_ll_sem,
                     "test_marginal_obs_ll_mean": test_marginal_obs_ll_mean,
                     "test_marginal_obs_ll_sem": test_marginal_obs_ll_sem,
+                    "train_prior_ll_mean": train_prior_ll_mean,
+                    "train_prior_ll_sem": train_prior_ll_sem,
+                    "val_prior_ll_mean": val_prior_ll_mean,
+                    "val_prior_ll_sem": val_prior_ll_sem,
+                    "test_prior_ll_mean": test_prior_ll_mean,
+                    "test_prior_ll_sem": test_prior_ll_sem,
+                    "tracker_output": tracker_output_fname,
+                    "eval_output": eval_output_fname,
+                    "model": model_fname,
+                }
+            )
+            print("Results inserted.")
+
+
+@schema
+class VPostPriorResult(dj.Computed):
+    """
+    Result table for the Variational Gamma Posterior
+    """
+
+    USE_WANDB = False
+    FORCE_GPU = False
+
+    definition = """
+    -> VPConfig.proj(vp_id='id')
+    -> VPTrainerConfig.proj(trainer_id='id')
+    -> AltDataLoaderConfig.proj(dl_id='id') 
+    ---
+    train_var_marginal_mean: double    # mean per trial, per sample, in nats
+    train_var_marginal_sem: double    # standard error of the mean
+    val_var_marginal_mean: double
+    val_var_marginal_sem: double
+    test_var_marginal_mean: double
+    test_var_marginal_sem: double
+
+    train_marginal_obs_ll_mean: double    # mean per trial, per sample, in nats
+    train_marginal_obs_ll_sem: double    # standard error of the mean
+    val_marginal_obs_ll_mean: double
+    val_marginal_obs_ll_sem: double
+    test_marginal_obs_ll_mean: double
+    test_marginal_obs_ll_sem: double
+
+    train_post_ll_mean: double    # mean per trial, per sample, in nats
+    train_post_ll_sem: double    # standard error of the mean
+    val_post_ll_mean: double
+    val_post_ll_sem: double
+    test_post_ll_mean: double
+    test_post_ll_sem: double
+
+    train_prior_ll_mean: double    # mean per trial, per sample, in nats
+    train_prior_ll_sem: double    # standard error of the mean
+    val_prior_ll_mean: double
+    val_prior_ll_sem: double
+    test_prior_ll_mean: double
+    test_prior_ll_sem: double
+    
+    tracker_output: attach@external
+    eval_output: attach@external
+    model: attach@external  # trained variational model (with joint and posterior)
+    """
+
+    def make(self, key):
+        print(
+            f"{self.__class__.__name__}'s {inspect.currentframe().f_code.co_name} called..."
+        )
+        print("Received key ->", key)
+
+        # get model args
+        vp_args = (VPostPriorConfig & {"id": key["vp_id"]}).fetch1()
+
+        prior_model_path = (
+            FlowPriorResult
+            & {
+                "fp_id": key["prior_fp_id"],
+                "trainer_id": key["prior_trainer_id"],
+                "dl_id": key["orig_dl_id"],
+            }
+        ).fetch1(download_path="/tmp")["model"]
+        likelihood_model_path = (
+            LikelihoodResult
+            & {
+                "ll_id": key["likelihood_id"],
+                "trainer_id": key["likelihood_trainer_id"],
+                "dl_id": key["orig_dl_id"],
+            }
+        ).fetch1(download_path="/tmp")["model"]
+
+        fp_args = (FlowPriorConfig & {"id": key["prior_fp_id"]}).fetch1()
+
+        model_args = {
+            "seed": key["seed"],
+            "prior_model_path": prior_model_path,
+            "prior_model_depth": fp_args["flow_depth"],
+            "prior_model_initial_nonlin": fp_args["flow_initial_nonlin"],
+            "prior_model_final_nonlin": fp_args["flow_final_nonlin"],
+            "prior_model_nonlin": fp_args["flow_nonlin"],
+            "prior_model_base_dist": fp_args["flow_base_dist"],
+            "prior_model_affine_type": fp_args["affine_type"],
+            "likelihood_model_path": likelihood_model_path,
+            "post_dist_type": vp_args["post_dist_type"],
+            "post_nonneg_transform": vp_args["post_nonneg_transform"],
+            "post_n_layers": vp_args["post_n_layers"],
+            "post_nonlin": vp_args["post_nonlin"],
+            "post_dropout_rate": vp_args["post_dropout_rate"],
+            "post_init_std": vp_args["post_init_std"],
+            "post_kwargs": vp_args["post_kwargs"],
+        }
+
+        trainer_args = (VPTrainerConfig & {"id": key["trainer_id"]}).fetch1()
+        trainer_args.pop("id")
+
+        # get dataloader args
+        data_loader_args = (AltDataLoaderConfig & {"id": key["dl_id"]}).fetch1()
+        data_loader_args.pop("id")
+
+        if self.FORCE_GPU:
+            if torch.cuda.is_available():
+                device = torch.device("cuda")
+            else:
+                raise ValueError("GPU not available.")
+        else:
+            device = torch.device("cpu")
+
+        trainer_args["device"] = device
+
+        # train the model
+        (
+            variational_model,
+            train_var_marginal_mean,
+            train_var_marginal_sem,
+            val_var_marginal_mean,
+            val_var_marginal_sem,
+            test_var_marginal_mean,
+            test_var_marginal_sem,
+            train_marginal_obs_ll_mean,
+            train_marginal_obs_ll_sem,
+            val_marginal_obs_ll_mean,
+            val_marginal_obs_ll_sem,
+            test_marginal_obs_ll_mean,
+            test_marginal_obs_ll_sem,
+            train_post_ll_mean,
+            train_post_ll_sem,
+            val_post_ll_mean,
+            val_post_ll_sem,
+            test_post_ll_mean,
+            test_post_ll_sem,
+            train_prior_ll_mean,
+            train_prior_ll_sem,
+            val_prior_ll_mean,
+            val_prior_ll_sem,
+            test_prior_ll_mean,
+            test_prior_ll_sem,
+            tracker_output,
+            eval_output,
+        ) = train_vpost_prior(
+            data_loader_args, model_args, trainer_args, self.USE_WANDB, dj.conn()
+        )
+
+        with tempfile.TemporaryDirectory() as tmp_dir:
+            # save model
+            model_fname = Path(tmp_dir) / f"{make_hash(key)}_model.pt"
+            torch.save(variational_model, model_fname)
+
+            # save tracker output
+            tracker_output_fname = (
+                Path(tmp_dir) / f"{make_hash(key)}_tracker_output.pkl"
+            )
+            with open(tracker_output_fname, "wb") as f:
+                pickle.dump(tracker_output, f)
+
+            # save eval output
+            eval_output_fname = Path(tmp_dir) / f"{make_hash(key)}_eval_output.pkl"
+            with open(eval_output_fname, "wb") as f:
+                pickle.dump(eval_output, f)
+
+            # insert results
+            self.insert1(
+                {
+                    **key,
+                    "train_var_marginal_mean": train_var_marginal_mean,
+                    "train_var_marginal_sem": train_var_marginal_sem,
+                    "val_var_marginal_mean": val_var_marginal_mean,
+                    "val_var_marginal_sem": val_var_marginal_sem,
+                    "test_var_marginal_mean": test_var_marginal_mean,
+                    "test_var_marginal_sem": test_var_marginal_sem,
+                    "train_marginal_obs_ll_mean": train_marginal_obs_ll_mean,
+                    "train_marginal_obs_ll_sem": train_marginal_obs_ll_sem,
+                    "val_marginal_obs_ll_mean": val_marginal_obs_ll_mean,
+                    "val_marginal_obs_ll_sem": val_marginal_obs_ll_sem,
+                    "test_marginal_obs_ll_mean": test_marginal_obs_ll_mean,
+                    "test_marginal_obs_ll_sem": test_marginal_obs_ll_sem,
+                    "train_post_ll_mean": train_post_ll_mean,
+                    "train_post_ll_sem": train_post_ll_sem,
+                    "val_post_ll_mean": val_post_ll_mean,
+                    "val_post_ll_sem": val_post_ll_sem,
+                    "test_post_ll_mean": test_post_ll_mean,
+                    "test_post_ll_sem": test_post_ll_sem,
                     "train_prior_ll_mean": train_prior_ll_mean,
                     "train_prior_ll_sem": train_prior_ll_sem,
                     "val_prior_ll_mean": val_prior_ll_mean,

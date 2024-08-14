@@ -92,3 +92,23 @@ class AdaptPriorTrainer(dj.Manual):
     early_stopping_threshold: int
     early_stopping_patience: int
     """
+
+
+@schema
+class VPTrainerConfig(dj.Manual):
+    """
+    Variational Posterior trainer configuration table
+    """
+
+    definition = """
+    id: char(32)
+    ---
+    n_bound_samples: int
+    bound_type: varchar(50)
+    lr: float
+    weight_decay: float
+    n_epochs: int
+    batch_size: int
+    early_stopping_threshold: int
+    early_stopping_patience: int
+    """
