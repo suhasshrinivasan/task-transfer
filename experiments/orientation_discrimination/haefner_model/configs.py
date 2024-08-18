@@ -6,6 +6,7 @@ import torch
 figdir = Path("/src/project/figures")
 datadir = Path("/src/project/data/synthetic/haefner_2afc")
 
+
 # Configuration parameters for original Haefner 2AFC Task 1 but with reduced n_g and n_x
 orginal_haefner_2afc_task1 = {
     "p_c": 0.5,
@@ -237,3 +238,176 @@ flat_toy_10neuron_haefner = {
         "xdist_figfname": figdir / "flat_toy_10neuron_haefner_xdist_task_1.pdf",
     },
 }
+
+
+haefner_model_1neuron_task1 = {
+    "p_c": 0.5,
+    "c1_psi": np.pi / 4,
+    "c2_psi": 3 * np.pi / 4,
+    "kappa": 1.0,
+    "g_phi": torch.linspace(0, np.pi, steps=9 + 1)[:-1],  # 9 instead of 256 original
+    "delta": 1,
+    "lam": 3.0,
+    "x_phi": torch.tensor([0.0]),
+    "obs_sigma": 0.1,  # TODO: find out, not written in the paper
+    "obs_h": 12,  # height of image
+    "obs_w": 12,  # width of image
+    "n_samples": 10_000,
+    "seed": 42,
+    "data_fname": datadir / "haefner_1neuron_task1.pkl",
+    "plotting_params": {
+        "dpi": 300,
+        "fontsize": 16,
+        "linewidth": 4,
+        "tick_length": 6,
+        "tick_width": 2,
+        "task_figfname": figdir / "haefner_1neuron_task1.pdf",
+        "prior_figfname": figdir / "haefner_1neuron_prior_task1.pdf",
+        "cdist_figfname": figdir / "haefner_1neuron_cdist_task1.pdf",
+        "g_figfname": figdir / "haefner_1neuron_g_task1.pdf",
+        "x_figfname": figdir / "haefner_1neuron_x_task1.pdf",
+        "xcorr_figfname": figdir / "haefner_1neuron_xcorr_task1.pdf",
+        "xcorr_hist_figfname": figdir / "haefner_1neuron_xcorr_hist_task1.pdf",
+        "xdist_figfname": figdir / "haefner_1neuron_xdist_task1.pdf",
+        "plot_corr": False,
+    },
+}
+
+haefner_model_1neuron_task2 = haefner_model_1neuron_task1.copy()
+haefner_model_1neuron_task2["c1_psi"] = 0
+haefner_model_1neuron_task2["c2_psi"] = np.pi / 2
+haefner_model_1neuron_task2["data_fname"] = (
+    datadir / "haefner_model_1neuron_task2_dataset.pkl"
+)
+haefner_model_1neuron_task2["plotting_params"] = orginal_haefner_2afc_task1[
+    "plotting_params"
+].copy()
+haefner_model_1neuron_task2["plotting_params"].update(
+    {
+        "task_figfname": figdir / "haefner_1neuron_task2.pdf",
+        "prior_figfname": figdir / "haefner_1neuron_prior_task2.pdf",
+        "cdist_figfname": figdir / "haefner_1neuron_cdist_task2.pdf",
+        "g_figfname": figdir / "haefner_1neuron_g_task2.pdf",
+        "x_figfname": figdir / "haefner_1neuron_x_task2.pdf",
+        "xcorr_figfname": figdir / "haefner_1neuron_xcorr_task2.pdf",
+        "xcorr_hist_figfname": figdir / "haefner_1neuron_xcorr_hist_task2.pdf",
+        "xdist_figfname": figdir / "haefner_1neuron_xdist_task2.pdf",
+        "plot_corr": False,
+    }
+)
+
+
+haefner_model_2neuron_task1 = {
+    "p_c": 0.5,
+    "c1_psi": np.pi / 4,
+    "c2_psi": 3 * np.pi / 4,
+    "kappa": 1.0,
+    "g_phi": torch.linspace(0, np.pi, steps=9 + 1)[:-1],
+    "delta": 1,
+    "lam": 3.0,
+    "x_phi": torch.tensor([np.pi / 4, np.pi / 2]),
+    "obs_sigma": 0.1,  # TODO: find out, not written in the paper
+    "obs_h": 12,  # height of image
+    "obs_w": 12,  # width of image
+    "n_samples": 10_000,
+    "seed": 42,
+    "data_fname": datadir / "haefner_2neuron_task1.pkl",
+    "plotting_params": {
+        "dpi": 300,
+        "fontsize": 16,
+        "linewidth": 4,
+        "tick_length": 6,
+        "tick_width": 2,
+        "task_figfname": figdir / "haefner_2neuron_task1.pdf",
+        "prior_figfname": figdir / "haefner_2neuron_prior_task1.pdf",
+        "cdist_figfname": figdir / "haefner_2neuron_cdist_task1.pdf",
+        "g_figfname": figdir / "haefner_2neuron_g_task1.pdf",
+        "x_figfname": figdir / "haefner_2neuron_x_task1.pdf",
+        "xcorr_figfname": figdir / "haefner_2neuron_xcorr_task1.pdf",
+        "xcorr_hist_figfname": figdir / "haefner_2neuron_xcorr_hist_task1.pdf",
+        "xdist_figfname": figdir / "haefner_2neuron_xdist_task1.pdf",
+        "plot_corr": False,
+    },
+}
+
+haefner_model_2neuron_task2 = haefner_model_2neuron_task1.copy()
+haefner_model_2neuron_task2["c1_psi"] = 0
+haefner_model_2neuron_task2["c2_psi"] = np.pi / 2
+haefner_model_2neuron_task2["data_fname"] = (
+    datadir / "haefner_model_2neuron_task2_dataset.pkl"
+)
+haefner_model_2neuron_task2["plotting_params"] = orginal_haefner_2afc_task1[
+    "plotting_params"
+].copy()
+haefner_model_2neuron_task2["plotting_params"].update(
+    {
+        "task_figfname": figdir / "haefner_2neuron_task2.pdf",
+        "prior_figfname": figdir / "haefner_2neuron_prior_task2.pdf",
+        "cdist_figfname": figdir / "haefner_2neuron_cdist_task2.pdf",
+        "g_figfname": figdir / "haefner_2neuron_g_task2.pdf",
+        "x_figfname": figdir / "haefner_2neuron_x_task2.pdf",
+        "xcorr_figfname": figdir / "haefner_2neuron_xcorr_task2.pdf",
+        "xcorr_hist_figfname": figdir / "haefner_2neuron_xcorr_hist_task2.pdf",
+        "xdist_figfname": figdir / "haefner_2neuron_xdist_task2.pdf",
+        "plot_corr": False,
+    }
+)
+
+
+haefner_model_4neuron_task1 = {
+    "p_c": 0.5,
+    "c1_psi": np.pi / 4,
+    "c2_psi": 3 * np.pi / 4,
+    "kappa": 1.0,
+    "g_phi": torch.linspace(0, np.pi, steps=9 + 1)[:-1],  # 9 instead of 256 original
+    "delta": 1,
+    "lam": 3.0,
+    "x_phi": torch.tensor(
+        [0.0, np.pi / 4, np.pi / 2, 3 * np.pi / 4]
+    ),  # 45 instead of 1024 original
+    "obs_sigma": 0.1,  # TODO: find out, not written in the paper
+    "obs_h": 12,  # height of image
+    "obs_w": 12,  # width of image
+    "n_samples": 10_000,
+    "seed": 42,
+    "data_fname": datadir / "haefner_4neuron_task1.pkl",
+    "plotting_params": {
+        "dpi": 300,
+        "fontsize": 16,
+        "linewidth": 4,
+        "tick_length": 6,
+        "tick_width": 2,
+        "task_figfname": figdir / "haefner_4neuron_task1.pdf",
+        "prior_figfname": figdir / "haefner_4neuron_prior_task1.pdf",
+        "cdist_figfname": figdir / "haefner_4neuron_cdist_task1.pdf",
+        "g_figfname": figdir / "haefner_4neuron_g_task1.pdf",
+        "x_figfname": figdir / "haefner_4neuron_x_task1.pdf",
+        "xcorr_figfname": figdir / "haefner_4neuron_xcorr_task1.pdf",
+        "xcorr_hist_figfname": figdir / "haefner_4neuron_xcorr_hist_task1.pdf",
+        "xdist_figfname": figdir / "haefner_4neuron_xdist_task1.pdf",
+        "plot_corr": False,
+    },
+}
+
+haefner_model_4neuron_task2 = haefner_model_4neuron_task1.copy()
+haefner_model_4neuron_task2["c1_psi"] = 0
+haefner_model_4neuron_task2["c2_psi"] = np.pi / 2
+haefner_model_4neuron_task2["data_fname"] = (
+    datadir / "haefner_model_4neuron_task2_dataset.pkl"
+)
+haefner_model_4neuron_task2["plotting_params"] = orginal_haefner_2afc_task1[
+    "plotting_params"
+].copy()
+haefner_model_4neuron_task2["plotting_params"].update(
+    {
+        "task_figfname": figdir / "haefner_4neuron_task2.pdf",
+        "prior_figfname": figdir / "haefner_4neuron_prior_task2.pdf",
+        "cdist_figfname": figdir / "haefner_4neuron_cdist_task2.pdf",
+        "g_figfname": figdir / "haefner_4neuron_g_task2.pdf",
+        "x_figfname": figdir / "haefner_4neuron_x_task2.pdf",
+        "xcorr_figfname": figdir / "haefner_4neuron_xcorr_task2.pdf",
+        "xcorr_hist_figfname": figdir / "haefner_4neuron_xcorr_hist_task2.pdf",
+        "xdist_figfname": figdir / "haefner_4neuron_xdist_task2.pdf",
+        "plot_corr": False,
+    }
+)
