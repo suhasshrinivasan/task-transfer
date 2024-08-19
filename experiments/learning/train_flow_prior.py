@@ -1,17 +1,29 @@
+import inspect
+
+import wandb
 from task_transfer.evaluation.evaluate_generative_model import logl_flow_prior
 from task_transfer.ml_lib.data_loading import build_dataloaders
 from task_transfer.ml_lib.model_building import build_flow_model
 from task_transfer.ml_lib.trainer_building import build_flow_trainer
 
 
-def train_flow_prior(data_loader_args, prior_args, trainer_args):
+def train_flow_prior(
+    data_loader_args, prior_args, trainer_args, use_wandb=False, dj_conn=None
+):
+    current_function_name = inspect.currentframe().f_code.co_name
+    if use_wandb:
+        wandb.init(
+            project=current_function_name,
+            entity="walkerlab",
+            config={**data_loader_args, **prior_args, **trainer_args},
+        )
     # if prior_args["flow_initial_nonlin"] != "log":
     #     raise ValueError("Only log initial nonlinearity is supported")
-    if (
-        data_loader_args["data_fname"]
-        != "/src/project/data/synthetic/haefner_2afc/flat_haefner_dataset.pkl"
-    ):
-        raise ValueError("Only flat haefner dataset is supported")
+    # if (
+    #     data_loader_args["data_fname"]
+    #     != "/src/project/data/synthetic/haefner_2afc/flat_haefner_dataset.pkl"
+    # ):
+    #     raise ValueError("Only flat haefner dataset is supported")
     train_loader, val_loader, _ = build_dataloaders(
         data_fname=data_loader_args["data_fname"],
         train_prop=data_loader_args["train_prop"],
@@ -43,7 +55,9 @@ def train_flow_prior(data_loader_args, prior_args, trainer_args):
         eval_criterion=None,
         eval_interval=None,
         eval_params=None,
-        logging_type="stdout",
+        logging_type="stdout" if not use_wandb else "wandb",
+        device=trainer_args["device"],
+        dj_conn=dj_conn,
     )
 
     trainer_output = trainer.train(

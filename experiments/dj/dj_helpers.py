@@ -30,10 +30,10 @@ def fetch_prior_cond_samples_path(prior_table, prior_key, cond_table, cond_key):
 
 
 def fetch_best_model_results(
-    result_table,
-    config_table,
-    data_loader_config_table,
-    trainer_config_table,
+    result_table_name,
+    config_table_name,
+    data_loader_config_table_name,
+    trainer_config_table_name,
     config_proj_col,  # Projection column for the config_table
     criterion="val_ll_mean",
     k=1,
@@ -64,20 +64,20 @@ def fetch_best_model_results(
     """
 
     # Get the columns for each table, excluding the 'id' column
-    cols = [col for col in config_table.heading if col != "id"]
-    dl_cols = [col for col in data_loader_config_table.heading if col != "id"]
-    trainer_cols = [col for col in trainer_config_table.heading if col != "id"]
+    cols = [col for col in config_table_name.heading if col != "id"]
+    dl_cols = [col for col in data_loader_config_table_name.heading if col != "id"]
+    trainer_cols = [col for col in trainer_config_table_name.heading if col != "id"]
 
     # Create the combined result table with dynamic projection column
     result_table = (
-        result_table
-        * config_table.proj(
+        result_table_name
+        * config_table_name.proj(
             *cols, **{config_proj_col: "id"}
         )  # Project configuration table
-        * data_loader_config_table.proj(
+        * data_loader_config_table_name.proj(
             dl_id="id", *dl_cols
         )  # Project data loader config table
-        * trainer_config_table.proj(
+        * trainer_config_table_name.proj(
             trainer_id="id", *trainer_cols
         )  # Project trainer config table
     )

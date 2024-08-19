@@ -1,4 +1,3 @@
-import torch
 from torch.optim import Adam
 
 from .loss_criteria import (
@@ -22,6 +21,8 @@ def build_flow_trainer(
     early_stopping_threshold,
     early_stopping_patience,
     logging_type,
+    device,
+    dj_conn,
 ):
     """
     Build the trainer for the flow model.
@@ -45,7 +46,6 @@ def build_flow_trainer(
         model_display_name="FlowPrior",
         logging_type=logging_type,
     )
-    device = "cuda" if torch.cuda.is_available() else "cpu"
     trainer = Trainer(
         loss_criterion=loss_criterion,
         eval_criterion=eval_criterion,
@@ -57,6 +57,7 @@ def build_flow_trainer(
         early_stopping_patience=early_stopping_patience,
         logger=train_logger,
         device=device,
+        dj_conn=dj_conn,
     )
     return trainer
 

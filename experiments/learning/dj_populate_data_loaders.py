@@ -6,8 +6,9 @@ from task_transfer.utils.utils import dict_product
 
 dataloader_configs = OrderedDict(
     data_fname=[
-        "/src/project/data/synthetic/haefner_2afc/original_haefner_2afc_task_1_dataset.pkl",
-        "/src/project/data/synthetic/haefner_2afc/flat_haefner_dataset.pkl",
+        # "/src/project/data/synthetic/haefner_2afc/original_haefner_2afc_task_1_dataset.pkl",
+        # "/src/project/data/synthetic/haefner_2afc/flat_haefner_dataset.pkl",
+        "/src/project/data/synthetic/haefner_2afc/haefner_model_1neuron_task1_dataset.pkl",
     ],
     train_prop=[0.7],
     val_prop=[0.2],
@@ -19,17 +20,17 @@ dataloader_configs_list = dict_product(dataloader_configs, insert_hash=True)
 DataLoaderConfig.insert(dataloader_configs_list, skip_duplicates=True)
 
 
-alt_dataloader_configs = OrderedDict(
-    data_fname=[
-        "/src/project/data/synthetic/haefner_2afc/original_haefner_2afc_task_2_dataset.pkl",
-        "/src/project/data/synthetic/haefner_2afc/original_haefner_2afc_task_1_dataset.pkl",
-        "/src/project/data/synthetic/haefner_2afc/flat_haefner_dataset.pkl",
-        "/src/project/data/synthetic/haefner_2afc/flat_haefner_100k_dataset.pkl",
-    ],
-    train_prop=[0.7],
-    val_prop=[0.2],
-)
+# alt_dataloader_configs = OrderedDict(
+#     data_fname=[
+#         "/src/project/data/synthetic/haefner_2afc/original_haefner_2afc_task_2_dataset.pkl",
+#         "/src/project/data/synthetic/haefner_2afc/original_haefner_2afc_task_1_dataset.pkl",
+#         "/src/project/data/synthetic/haefner_2afc/flat_haefner_dataset.pkl",
+#         "/src/project/data/synthetic/haefner_2afc/flat_haefner_100k_dataset.pkl",
+#     ],
+#     train_prop=[0.7],
+#     val_prop=[0.2],
+# )
 
-alt_dataloader_configs_list = dict_product(alt_dataloader_configs, insert_hash=True)
+# alt_dataloader_configs_list = dict_product(alt_dataloader_configs, insert_hash=True)
 
-AltDataLoaderConfig.insert(alt_dataloader_configs_list, skip_duplicates=True)
+# AltDataLoaderConfig.insert(alt_dataloader_configs_list, skip_duplicates=True)

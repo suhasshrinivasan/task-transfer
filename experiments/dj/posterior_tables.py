@@ -44,4 +44,4 @@ class VPostPriorConfig(dj.Manual):
     likelihood_id: char(32) # to index into LikelihoodConfig
     likelihood_trainer_id: char(32)  # to index into LLTrainerConfig
     orig_dl_id: char(32) # to index into DataLoaderConfig used to id the prior and likelihood
-    """
+"""

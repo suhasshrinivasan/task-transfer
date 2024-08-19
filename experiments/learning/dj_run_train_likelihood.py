@@ -1,4 +1,3 @@
-import itertools as it
 from collections import OrderedDict
 
 from experiments.dj.dataloader_tables import DataLoaderConfig

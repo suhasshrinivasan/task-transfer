@@ -113,7 +113,7 @@ FPTrainerConfig.insert(trainer_configs_list, skip_duplicates=True)
 
 # learn flow model on flat haefner dataset
 # but don't train all combinations
-# pick the best flow model on hierarchical dataset and borrow
+# pick the best flow model on hierarchical 45 neuron dataset and borrow
 # the same architecture and other hyperparameters
 # write these as restrictions in the populate call
 download_path = "/tmp"

@@ -183,7 +183,7 @@ def main():
     # simulate_data(**cfg.flat_toy_10neuron_haefner)
 
     # simulate_data(**cfg.haefner_model_1neuron_task1)
-    # simulate_data(**cfg.haefner_model_1neuron_task2)
+    simulate_data(**cfg.haefner_model_1neuron_task2)
 
     # simulate_data(**cfg.haefner_model_2neuron_task1)
     # simulate_data(**cfg.haefner_model_2neuron_task2)

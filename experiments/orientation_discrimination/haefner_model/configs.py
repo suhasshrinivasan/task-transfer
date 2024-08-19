@@ -254,7 +254,7 @@ haefner_model_1neuron_task1 = {
     "obs_w": 12,  # width of image
     "n_samples": 10_000,
     "seed": 42,
-    "data_fname": datadir / "haefner_1neuron_task1.pkl",
+    "data_fname": datadir / "haefner_model_1neuron_task1_dataset.pkl",
     "plotting_params": {
         "dpi": 300,
         "fontsize": 16,

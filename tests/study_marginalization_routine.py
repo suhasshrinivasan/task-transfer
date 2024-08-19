@@ -9,7 +9,7 @@ import torch.nn as nn
 from sklearn.datasets import make_spd_matrix
 
 import experiments.orientation_discrimination.haefner_model.configs as data_cfg
-from task_transfer.ml_lib.loss_criteria import mc_marginal_nll, mc_marginal_nll_detailed
+from task_transfer.ml_lib.loss_criteria import mc_marginal_nll
 from task_transfer.utils.insilico_stimuli import generate_gabors
 from task_transfer.utils.math_utils import is_pos_def
 from task_transfer.utils.model_utils import build_haefner_model
@@ -19,9 +19,10 @@ from task_transfer.utils.utils import dict_product
 def test_mc_marginal_log_likelihood(
     prior_dim=10,
     conditional_dim=144,
-    mc_sample_size=(10_000,),
+    mc_sample_size=10_000,
     obs_batch_dim=128,
     _seed=42,
+    make_pfs_ortho=False,
 ):
     """
     Tests the Monte Carlo estimation of marginal log likelihood by comparing the
@@ -35,7 +36,7 @@ def test_mc_marginal_log_likelihood(
     Parameters:
     - prior_dim (int): Dimensionality of the prior distribution.
     - conditional_dim (int): Dimensionality of the conditional distribution.
-    - mc_sample_size (tuple): Number of samples to draw in the Monte Carlo estimation.
+    - mc_sample_size (int): Number of samples to draw in the Monte Carlo estimation.
     - obs_batch_dim (int): The batch size of observations to evaluate.
     - _seed (int): Seed for random number generation to ensure reproducibility.
     - _atol_per_dim (float): Absolute tolerance per dimension for the error between
@@ -47,6 +48,7 @@ def test_mc_marginal_log_likelihood(
     """
     print("Running config:", locals())
     torch.manual_seed(_seed)
+    mc_sample_size = (mc_sample_size,)
     mu_prior = torch.rand((prior_dim,))
     # cov_prior = torch.rand((prior_dim, prior_dim))
     # cov_prior = cov_prior @ cov_prior.T + 1e-6 * torch.eye(prior_dim)
@@ -60,15 +62,16 @@ def test_mc_marginal_log_likelihood(
     mu_x_z_fn = torch.nn.Linear(prior_dim, conditional_dim)
 
     x_phi = torch.linspace(0, np.pi, steps=prior_dim + 1)[:-1]
+    canvas_dim = int(np.sqrt(conditional_dim))
     gabor_params = dict(
         {
-            "canvas_size": [10, 10],
-            "sizes": [10],
+            "canvas_size": [canvas_dim, canvas_dim],
+            "sizes": [canvas_dim],
             "spatial_frequencies": [1 / 3],
             "contrasts": [1.0],
             "grey_levels": [0.0],
             "eccentricities": [0.0],
-            "locations": [[6, 6]],
+            "locations": [[canvas_dim // 2, canvas_dim // 2]],
             "phases": [np.pi / 2],
             "relative_sf": False,
         },
@@ -76,10 +79,20 @@ def test_mc_marginal_log_likelihood(
     x_pfs = torch.Tensor(
         generate_gabors(orientations=x_phi.tolist(), gabor_params=gabor_params)
     )
-    mu_x_z_fn.weight.data = x_pfs.view(x_pfs.shape[0], -1).T
+    x_pfs = x_pfs.view(x_pfs.shape[0], -1).T
+    if make_pfs_ortho:
+        x_pfs = torch.cat(
+            [
+                torch.diag(torch.diag(x_pfs)),
+                torch.zeros(-prior_dim, prior_dim),
+            ],
+            dim=0,
+        )
+    mu_x_z_fn.weight.data = x_pfs
     mu_x_z_fn.bias.data = torch.zeros(conditional_dim)
 
-    cov_x_z = torch.Tensor(make_spd_matrix(conditional_dim))
+    # cov_x_z = torch.Tensor(make_spd_matrix(conditional_dim))
+    cov_x_z = torch.eye(conditional_dim)
     # C = torch.randn((conditional_dim, conditional_dim)) / 10
     # L = torch.tril(C)
     # cov_x_z = L @ L.T + 1e-4 * torch.eye(conditional_dim)
@@ -90,7 +103,7 @@ def test_mc_marginal_log_likelihood(
     joint = G.Joint(prior=prior, conditional=conditional)
     marginal_mu = mu_prior @ mu_x_z_fn.weight.data.T + mu_x_z_fn.bias.data
     marginal_cov = mu_x_z_fn.weight.data @ cov_prior @ mu_x_z_fn.weight.data.T + cov_x_z
-    marginal = G.TrainableDistrigbutionAdapter(
+    marginal = G.TrainableDistributionAdapter(
         D.MultivariateNormal, loc=marginal_mu, covariance_matrix=marginal_cov
     )
     obs = marginal.sample((obs_batch_dim,))
@@ -105,12 +118,16 @@ def test_mc_marginal_log_likelihood(
     # marginal_ll = torch.logsumexp(conditional_ll, dim=0) - torch.log(
     #     torch.tensor(conditional_ll.shape[0])
     # )
-    marginal_nll, prior_sample, conditional_dist, conditional_ll = (
-        mc_marginal_nll_detailed(joint, [obs, obs], 0, mc_sample_size)
-    )
-    marginal_ll = -marginal_nll.mean()
-    error = torch.abs(marginal_ll - true_marginal_lp) / conditional_dim
-    return error.item()
+    # marginal_nll, prior_sample, conditional_dist, conditional_ll = (
+    #     mc_marginal_nll_detailed(joint, [obs, obs], 0, mc_sample_size)
+    # )
+    marginal_lp = -mc_marginal_nll(
+        joint, [obs, None], 0, mc_sample_size=mc_sample_size
+    ).mean()
+    error = (true_marginal_lp - marginal_lp) / conditional_dim
+    print("Error:", error.item())
+    abs_error = torch.abs(error)
+    return abs_error.item()
 
 
 # param_configs = dict_product(
@@ -164,18 +181,51 @@ def test_mc_marginal_log_likelihood(
 #     insert_hash=False,
 # )
 
+# param_configs = dict_product(
+#     {
+#         "prior_dim": [45],
+#         "conditional_dim": [144],
+#         "mc_sample_size": [
+#             (1,),
+#             (5,),
+#             (10,),
+#             (50,),
+#             (100,),
+#             (500,),
+#             (1000,),
+#             (5_000,),
+#             (10_000,),
+#             (50_000,),
+#             # (100_000,),
+#         ],
+#         "obs_batch_dim": [128],
+#         "_seed": [42, 23432, 5745, 196],
+#     },
+#     insert_hash=False,
+# )
+
+# param_configs = dict_product(
+#     {
+#         "prior_dim": [45],
+#         "conditional_dim": [144],
+#         "mc_sample_size": range(1, 50_000, 10),
+#         "obs_batch_dim": [128],
+#         "_seed": [42, 23432, 5745, 196],
+#     },
+#     insert_hash=False,
+# )
+
 param_configs = dict_product(
     {
-        "prior_dim": range(1, 100),
-        "conditional_dim": [100],
-        "mc_sample_size": [
-            (10000,),
-        ],
+        "prior_dim": range(1, 45),
+        "conditional_dim": [144],
+        "mc_sample_size": [10, 100, 1000, 10_000],
         "obs_batch_dim": [128],
         "_seed": [42],
     },
     insert_hash=False,
 )
+
 
 prior_dims = []
 conditional_dims = []
@@ -189,7 +239,7 @@ for param_config in param_configs:
         errors.append(error)
         prior_dims.append(param_config["prior_dim"])
         conditional_dims.append(param_config["conditional_dim"])
-        mc_sample_sizes.append(param_config["mc_sample_size"][0])
+        mc_sample_sizes.append(param_config["mc_sample_size"])
         obs_batch_dims.append(param_config["obs_batch_dim"])
         seeds.append(param_config["_seed"])
     except Exception as e:
@@ -206,5 +256,5 @@ result = OrderedDict(
         "seed": seeds,
     }
 )
-with open("test_mc_prior_gabor.json", "w") as f:
+with open("sample_errors_ortho_pfs.json", "w") as f:
     json.dump(result, f, indent=2)
