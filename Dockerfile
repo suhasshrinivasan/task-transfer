@@ -7,16 +7,16 @@ RUN pip3 install --upgrade pip
 
 ### apt packages
 # RUN apt install -y fish graphviz
+RUN apt install -y graphviz==2.43.0
 
 ### python packages
 # wandb for visualization, pymc for sampling
 # graphviz for visualizing pymc models
 # datajoint for experiment and data management
-RUN pip3 install wandb pymc graphviz datajoint pytest
-RUN pip3 install --upgrade pyparsing
+RUN pip3 install wandb==0.17.5 pymc==5.6.1 graphviz==0.20.3 datajoint==0.14.1 pytest==8.2.2 pyparsing==3.1.2
 
 # stable diffusion
-RUN pip3 install --upgrade diffusers transformers scipy accelerate wandb
+# RUN pip3 install --upgrade diffusers transformers scipy accelerate wandb
 
 ### custom packages
 # gensn for probabilistic machine learning
