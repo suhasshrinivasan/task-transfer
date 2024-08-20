@@ -21,7 +21,8 @@ def test_mc_marginal_log_likelihood(
     conditional_dim=144,
     mc_sample_size=10_000,
     obs_batch_dim=128,
-    _seed=42,
+    _model_seed=42,
+    _sampling_seed=42,
     make_pfs_ortho=False,
 ):
     """
@@ -47,7 +48,7 @@ def test_mc_marginal_log_likelihood(
     tolerance, indicating the estimation is sufficiently accurate.
     """
     print("Running config:", locals())
-    torch.manual_seed(_seed)
+    torch.manual_seed(_model_seed)
     mc_sample_size = (mc_sample_size,)
     mu_prior = torch.rand((prior_dim,))
     # cov_prior = torch.rand((prior_dim, prior_dim))
@@ -106,7 +107,8 @@ def test_mc_marginal_log_likelihood(
     marginal = G.TrainableDistributionAdapter(
         D.MultivariateNormal, loc=marginal_mu, covariance_matrix=marginal_cov
     )
-    obs = marginal.sample((obs_batch_dim,))
+    # obs = marginal.sample((obs_batch_dim,))  # TODO: make mean of marginal
+    obs = marginal_mu.unsqueeze(0)
     true_marginal_lp = marginal(obs).mean()
     # mc_marginal_lp = mc_marginal_log_likelihood(
     #     joint, obs, mc_sample_size=mc_sample_size, reduction="mean"
@@ -121,13 +123,14 @@ def test_mc_marginal_log_likelihood(
     # marginal_nll, prior_sample, conditional_dist, conditional_ll = (
     #     mc_marginal_nll_detailed(joint, [obs, obs], 0, mc_sample_size)
     # )
+    torch.manual_seed(_sampling_seed)
     marginal_lp = -mc_marginal_nll(
         joint, [obs, None], 0, mc_sample_size=mc_sample_size
     ).mean()
-    error = (true_marginal_lp - marginal_lp) / conditional_dim
+    error = true_marginal_lp - marginal_lp
     print("Error:", error.item())
     abs_error = torch.abs(error)
-    return abs_error.item()
+    return error.item(), abs_error.item()
 
 
 # param_configs = dict_product(
@@ -215,13 +218,25 @@ def test_mc_marginal_log_likelihood(
 #     insert_hash=False,
 # )
 
+# param_configs = dict_product(
+#     {
+#         "prior_dim": range(1, 45),
+#         "conditional_dim": [144],
+#         "mc_sample_size": [10, 100, 1000, 10_000],
+#         "obs_batch_dim": [128],
+#         "_seed": [42],
+#     },
+#     insert_hash=False,
+# )
+
 param_configs = dict_product(
     {
         "prior_dim": range(1, 45),
-        "conditional_dim": [144],
-        "mc_sample_size": [10, 100, 1000, 10_000],
-        "obs_batch_dim": [128],
-        "_seed": [42],
+        "conditional_dim": [36],
+        "mc_sample_size": [10_000],
+        "obs_batch_dim": [1],
+        "_sampling_seed": range(100),
+        "_model_seed": [42],
     },
     insert_hash=False,
 )
@@ -231,17 +246,21 @@ prior_dims = []
 conditional_dims = []
 mc_sample_sizes = []
 obs_batch_dims = []
-seeds = []
+sampling_seeds = []
+model_seeds = []
 errors = []
+abs_errors = []
 for param_config in param_configs:
     try:
-        error = test_mc_marginal_log_likelihood(**param_config)
+        error, abs_error = test_mc_marginal_log_likelihood(**param_config)
         errors.append(error)
+        abs_errors.append(abs_error)
         prior_dims.append(param_config["prior_dim"])
         conditional_dims.append(param_config["conditional_dim"])
         mc_sample_sizes.append(param_config["mc_sample_size"])
         obs_batch_dims.append(param_config["obs_batch_dim"])
-        seeds.append(param_config["_seed"])
+        sampling_seeds.append(param_config["_sampling_seed"])
+        model_seeds.append(param_config["_model_seed"])
     except Exception as e:
         print("Failed config:", param_config)
         print(e)
@@ -249,12 +268,14 @@ for param_config in param_configs:
 result = OrderedDict(
     {
         "errors": errors,
+        "abs_errors": abs_errors,
         "prior_dim": prior_dims,
         "conditional_dim": conditional_dims,
         "mc_sample_size": mc_sample_sizes,
         "obs_batch_dim": obs_batch_dims,
-        "seed": seeds,
+        "sampling_seed": sampling_seeds,
+        "model_seed": model_seeds,
     }
 )
-with open("sample_errors_ortho_pfs.json", "w") as f:
+with open("check_bias_estimate.json", "w") as f:
     json.dump(result, f, indent=2)
