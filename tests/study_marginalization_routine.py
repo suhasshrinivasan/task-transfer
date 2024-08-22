@@ -58,7 +58,7 @@ def test_mc_marginal_log_likelihood(
     # prior = G.TrainableDistributionAdapter(
     #     D.MultivariateNormal, loc=mu_prior, covariance_matrix=cov_prior
     # )
-    cov_prior = torch.eye(prior_dim)
+    cov_prior = torch.eye(prior_dim) * 5e-1
     prior = G.IndependentNormal(loc=mu_prior, scale=torch.sqrt(cov_prior.diag()))
     mu_x_z_fn = torch.nn.Linear(prior_dim, conditional_dim)
 
@@ -82,13 +82,13 @@ def test_mc_marginal_log_likelihood(
     )
     x_pfs = x_pfs.view(x_pfs.shape[0], -1).T
     if make_pfs_ortho:
-        x_pfs = torch.cat(
+        torch.cat(
             [
                 torch.diag(torch.diag(x_pfs)),
-                torch.zeros(-prior_dim, prior_dim),
+                torch.zeros(conditional_dim - prior_dim, prior_dim),
             ],
             dim=0,
-        )
+        ).shape
     mu_x_z_fn.weight.data = x_pfs
     mu_x_z_fn.bias.data = torch.zeros(conditional_dim)
 
@@ -237,6 +237,7 @@ param_configs = dict_product(
         "obs_batch_dim": [1],
         "_sampling_seed": range(100),
         "_model_seed": [42],
+        "make_pfs_ortho": [False],
     },
     insert_hash=False,
 )
@@ -277,5 +278,5 @@ result = OrderedDict(
         "model_seed": model_seeds,
     }
 )
-with open("check_bias_estimate.json", "w") as f:
+with open("check_bias_estimate_med_var.json", "w") as f:
     json.dump(result, f, indent=2)

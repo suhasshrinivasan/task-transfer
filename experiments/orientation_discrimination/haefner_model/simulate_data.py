@@ -76,16 +76,16 @@ def simulate_data(
         simulated data (dict): Dictionary containing the generated data.
     """
 
-    if os.path.exists(data_fname):
-        raise FileExistsError(
-            f"Operation canceled: '{data_fname}' already exists and will not be overwritten."
-        )
+    # if os.path.exists(data_fname):
+    #     raise FileExistsError(
+    #         f"Operation canceled: '{data_fname}' already exists and will not be overwritten."
+    #     )
 
-    for key, fname in plotting_params.items():
-        if key.endswith("_figfname") and os.path.exists(fname):
-            raise FileExistsError(
-                f"Operation canceled: '{fname}' already exists and will not be overwritten."
-            )
+    # for key, fname in plotting_params.items():
+    #     if key.endswith("_figfname") and os.path.exists(fname):
+    #         raise FileExistsError(
+    #             f"Operation canceled: '{fname}' already exists and will not be overwritten."
+    #         )
 
     # Set seed
     torch.manual_seed(seed)
@@ -183,13 +183,19 @@ def main():
     # simulate_data(**cfg.flat_toy_10neuron_haefner)
 
     # simulate_data(**cfg.haefner_model_1neuron_task1)
-    simulate_data(**cfg.haefner_model_1neuron_task2)
+    # simulate_data(**cfg.haefner_model_1neuron_task2)
 
     # simulate_data(**cfg.haefner_model_2neuron_task1)
     # simulate_data(**cfg.haefner_model_2neuron_task2)
 
     # simulate_data(**cfg.haefner_model_4neuron_task1)
     # simulate_data(**cfg.haefner_model_4neuron_task2)
+
+    simulate_data(**cfg.haefner_model_1neuron_highdelta_task1)
+    simulate_data(**cfg.haefner_model_1neuron_highdelta_task2)
+
+    simulate_data(**cfg.haefner_model_2neuron_highdelta_task1)
+    simulate_data(**cfg.haefner_model_2neuron_highdelta_task2)
 
 
 if __name__ == "__main__":
