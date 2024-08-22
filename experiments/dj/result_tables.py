@@ -1,4 +1,3 @@
-import inspect
 import pickle
 import tempfile
 from pathlib import Path
@@ -670,7 +669,7 @@ class SBVGPResult2(dj.Computed):
                     "model": model_fname,
                 }
             )
-            print("Results inserted.")
+            print("Results inserted.l")
 
 
 # DEPRECATE THIS IN FAVOR OF MLPCondSamplesConfig2
@@ -887,6 +886,296 @@ class SBVGPResult(dj.Computed):
                 }
             )
             print("Results inserted.")
+
+
+@schema
+class AdaptPriorSamplesConfig(dj.Manual):
+    """
+    Table for Adapt Prior Samples Configuration
+    """
+
+    definition = """
+    adapt_prior_seed: int   # seed for adapt prior model
+    prior_fp_id: char(32) # to index into FlowPriorConfig
+    prior_trainer_id: char(32)   # to index into FPTrainerConfig 
+    likelihood_id: char(32) # to index into LikelihoodConfig
+    likelihood_trainer_id: char(32)  # to index into LLTrainerConfig
+    orig_dl_id: char(32) # to index into DataLoaderConfig used for the prior and likelihood training
+    adapt_prior_trainer_id: char(32)  # to index into AdaptPriorTrainer
+    alt_dl_id: char(32) # to index into AltDataLoaderConfig
+    n_samples: int  # number of samples to generate
+    seed: int  # seed for generating samples
+    """
+
+
+@schema
+class AdaptPriorSamples(dj.Computed):
+    """
+    Table for Adapt Prior Samples
+    """
+
+    definition = """
+    -> AdaptPriorSamplesConfig
+    ---
+    samples: attach@external
+    """
+
+    def make(self, key):
+        # Print the provided key
+        print("Received key ->", key)
+
+        # Set the seed
+        torch.manual_seed(key["seed"])
+
+        # Fetch and prepare args
+        print("Fetching AdaptPriorResult model...")
+        model_path = (
+            AdaptPriorResult
+            & {
+                "seed": key["adapt_prior_seed"],
+                "prior_fp_id": key["prior_fp_id"],
+                "prior_trainer_id": key["prior_trainer_id"],
+                "likelihood_id": key["likelihood_id"],
+                "likelihood_trainer_id": key["likelihood_trainer_id"],
+                "orig_dl_id": key["orig_dl_id"],
+                "trainer_id": key["adapt_prior_trainer_id"],
+                "dl_id": key["alt_dl_id"],
+            }
+        ).fetch1(download_path="/tmp")["model"]
+
+        # Load the model
+        print("Loading model...")
+        model = torch.load(model_path, map_location="cpu")
+        prior_model = model.prior
+        prior_model.eval()
+        print("Model loaded.")
+        with torch.no_grad():
+            # Generate samples
+            print("Generating samples...")
+            samples = prior_model.sample((key["n_samples"],))
+        print("Samples generated.")
+
+        print("Saving samples...")
+        with tempfile.TemporaryDirectory() as tmp_dir:
+            # Save samples
+            samples_fname = f"{tmp_dir}/prior_{make_hash(key)}.pt"
+            torch.save(samples, samples_fname)
+            key["samples"] = samples_fname
+            self.insert1(key)
+
+        print("Samples saved.")
+
+
+@schema
+class AdaptMLPCondSamples(dj.Computed):
+    """
+    Table for Adapt Prior Samples
+    """
+
+    definition = """
+    -> AdaptPriorSamplesConfig
+    ---
+    samples: attach@external
+    """
+
+    def make(self, key):
+        # Print the provided key
+        print("Received key ->", key)
+
+        # Set the seed
+        torch.manual_seed(key["seed"])
+
+        # Fetch and prepare args
+        print("Fetching AdaptPriorResult model...")
+        model_path = (
+            AdaptPriorResult
+            & {
+                "seed": key["adapt_prior_seed"],
+                "prior_fp_id": key["prior_fp_id"],
+                "prior_trainer_id": key["prior_trainer_id"],
+                "likelihood_id": key["likelihood_id"],
+                "likelihood_trainer_id": key["likelihood_trainer_id"],
+                "orig_dl_id": key["orig_dl_id"],
+                "trainer_id": key["adapt_prior_trainer_id"],
+                "dl_id": key["alt_dl_id"],
+            }
+        ).fetch1(download_path="/tmp")["model"]
+
+        # Fetch prior samples
+        print("Fetching prior samples...")
+        with tempfile.TemporaryDirectory() as tmp_dir:
+            prior_samples_path = (
+                AdaptPriorSamples
+                & {
+                    "adapt_prior_seed": key["adapt_prior_seed"],
+                    "prior_fp_id": key["prior_fp_id"],
+                    "prior_trainer_id": key["prior_trainer_id"],
+                    "likelihood_id": key["likelihood_id"],
+                    "likelihood_trainer_id": key["likelihood_trainer_id"],
+                    "orig_dl_id": key["orig_dl_id"],
+                    "adapt_prior_trainer_id": key["adapt_prior_trainer_id"],
+                    "alt_dl_id": key["alt_dl_id"],
+                    "n_samples": key["n_samples"],
+                    "seed": key["seed"],
+                }
+            ).fetch1(download_path=tmp_dir)["samples"]
+            prior_samples = torch.load(prior_samples_path, map_location="cpu")
+
+            # Load the model
+            print("Loading model...")
+            model = torch.load(model_path, map_location="cpu")
+            conditional_model = model.conditional
+            conditional_model.eval()
+            with torch.no_grad():
+                # Generate conditional samples
+                print("Generating conditional samples...")
+                samples = conditional_model.sample(cond=prior_samples)
+            print("Samples generated.")
+
+            print("Saving samples...")
+            # Save samples
+            samples_fname = f"{tmp_dir}/cond_samples_{make_hash(key)}.pt"
+            torch.save(samples, samples_fname)
+
+            key["samples"] = samples_fname
+            self.insert1(key)
+
+
+# @schema
+# class SBVGPAdaptedResult(dj.Computed):
+#     """
+#     Result table for the Sample Based Variational Gamma Posterior incorporating adapted prior table AdaptPriorResult
+#     """
+
+#     USE_WANDB = False
+#     FORCE_GPU = False
+
+#     definition = """
+#     -> SBVGPConfig.proj(sbvp_id='id')
+#     -> SBVGPTrainerConfig.proj(sbvp_trainer_id='id')
+#     -> AdaptPriorSamplesConfig.proj(fp_samples_id='fp_id', data_seed='seed')
+#     ---
+#     train_ll_mean: double    # mean per dimension, per sample, in nats
+#     train_ll_sem: double    # standard error of the mean
+#     val_ll_mean: double
+#     val_ll_sem: double
+#     test_ll_mean: double
+#     test_ll_sem: double
+
+#     train_ll_mean_sample: double    # mean per dimension, per sample, in nats
+#     train_ll_sem_sample: double    # standard error of the mean
+#     val_ll_mean_sample: double
+#     val_ll_sem_sample: double
+#     test_ll_mean_sample: double
+#     test_ll_sem_sample: double
+
+#     tracker_output: attach@external
+#     eval_output: attach@external
+#     model: attach@external
+#     """
+
+#     def make(self, key):
+#         print("Received key ->", key)
+#         # get posterior args
+#         posterior_args = (SBVGPConfig & {"id": key["sbvp_id"]}).fetch1()
+#         posterior_args["dist"] = "gamma"
+
+#         # get the FPSamples and MLPCondSamples keys
+#         FPSamples_key = (
+#             FPSamplesConfig
+#             & {
+#                 "fp_id": key["fp_samples_id"],
+#                 "dl_id": key["dl_id"],
+#                 "trainer_id": key["trainer_id"],
+#                 "seed": key["data_seed"],
+#                 "n_samples": key["n_samples"],
+#             }
+#         ).fetch1()
+#         # Use MLPCondSamplesConfig2 instead of MLPCondSamplesConfig
+#         MLPCondSamples_key = (
+#             MLPCondSamplesConfig2 & {"ll_id": key["mlpcond_samples_id"]}
+#         ).fetch1()
+#         # Use MLPCondSamples2 instead of MLPCondSamples
+#         prior_samples_path, cond_samples_path = fetch_prior_cond_samples_path(
+#             FPSamples, FPSamples_key, MLPCondSamples2, MLPCondSamples_key
+#         )
+
+#         # get data_loader args
+#         data_loader_args = (DataLoaderConfig & {"id": key["dl_id"]}).fetch1()
+#         data_loader_args["sampled_responses_path"] = prior_samples_path
+#         data_loader_args["sampled_obs_path"] = cond_samples_path
+#         data_loader_args["data_seed"] = key["data_seed"]
+
+#         # get trainer args
+#         trainer_args = (SBVGPTrainerConfig & {"id": key["sbvp_trainer_id"]}).fetch1()
+
+#         if self.FORCE_GPU:
+#             if torch.cuda.is_available():
+#                 device = torch.device("cuda")
+#             else:
+#                 raise ValueError("GPU not available.")
+#         else:
+#             device = torch.device("cpu")
+#         trainer_args["device"] = device
+
+#         # train the model
+#         (
+#             model,
+#             train_ll_mean,
+#             train_ll_sem,
+#             val_ll_mean,
+#             val_ll_sem,
+#             test_ll_mean,
+#             test_ll_sem,
+#             train_ll_mean_sample,
+#             train_ll_sem_sample,
+#             val_ll_mean_sample,
+#             val_ll_sem_sample,
+#             test_ll_mean_sample,
+#             test_ll_sem_sample,
+#             tracker_output,
+#             eval_output,
+#         ) = train_sbvp(data_loader_args, posterior_args, trainer_args, self.USE_WANDB)
+
+#         with tempfile.TemporaryDirectory() as tmp_dir:
+#             # save model
+#             model_fname = Path(tmp_dir) / f"{make_hash(key)}_model.pt"
+#             torch.save(model, model_fname)
+
+#             # save tracker output
+#             tracker_output_fname = (
+#                 Path(tmp_dir) / f"{make_hash(key)}_tracker_output.pkl"
+#             )
+#             with open(tracker_output_fname, "wb") as f:
+#                 pickle.dump(tracker_output, f)
+
+#             # save eval output
+#             eval_output_fname = Path(tmp_dir) / f"{make_hash(key)}_eval_output.pkl"
+#             with open(eval_output_fname, "wb") as f:
+#                 pickle.dump(eval_output, f)
+
+#             # insert results
+#             self.insert1(
+#                 {
+#                     **key,
+#                     "train_ll_mean": train_ll_mean,
+#                     "train_ll_sem": train_ll_sem,
+#                     "val_ll_mean": val_ll_mean,
+#                     "val_ll_sem": val_ll_sem,
+#                     "test_ll_mean": test_ll_mean,
+#                     "test_ll_sem": test_ll_sem,
+#                     "train_ll_mean_sample": train_ll_mean_sample,
+#                     "train_ll_sem_sample": train_ll_sem_sample,
+#                     "val_ll_mean_sample": val_ll_mean_sample,
+#                     "val_ll_sem_sample": val_ll_sem_sample,
+#                     "test_ll_mean_sample": test_ll_mean_sample,
+#                     "test_ll_sem_sample": test_ll_sem_sample,
+#                     "tracker_output": tracker_output_fname,
+#                     "eval_output": eval_output_fname,
+#                     "model": model_fname,
+#                 }
+#             )
+#             print("Results inserted.")
 
 
 @schema

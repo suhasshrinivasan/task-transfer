@@ -19,12 +19,11 @@ download_path = "/tmp"
 criterion = "val_ll_mean"
 k = 1
 likelihood_config_proj_col = "ll_id"
-dataset_restriction = "id = '260a5ea8175f75eaef132f42873ad14a'"
-data_loader_config_table = DataLoaderConfig & dataset_restriction
+dataset_restriction = "dl_id = '260a5ea8175f75eaef132f42873ad14a'"
 
 best_val_likelihood_results = (LikelihoodResult & dataset_restriction).fetch(
-    download_path=download_path, order_by="val_ll_mean DESC", as_dict=True, limit=1
-)
+    download_path=download_path, order_by="val_ll_mean DESC", as_dict=True, limit=k
+)[0]
 
 # best_val_likelihood_results = fetch_best_model_results(
 #     result_table=LikelihoodResult,
@@ -41,11 +40,17 @@ best_val_likelihood_results = (LikelihoodResult & dataset_restriction).fetch(
 # set dl_id to the flat haefner dataset
 restriction = (
     f"ll_id = '{best_val_likelihood_results['ll_id']}' "
-    f"and dl_id = 'f1ae78885d2ace1ba976199d4cf1a4d6'"
+    f"and dl_id = 'f7b32dd97feda9f34e2b47e24fa3d18b'"
 )
 LikelihoodResult.FORCE_GPU = True
+# LikelihoodResult.populate(
+#     restriction,
+#     order="original",
+#     suppress_errors=True,
+# )
 LikelihoodResult.populate(
     restriction,
-    order="original",
+    order="random",
     suppress_errors=True,
+    reserve_jobs=True,
 )

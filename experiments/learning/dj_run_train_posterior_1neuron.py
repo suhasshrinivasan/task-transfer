@@ -27,31 +27,14 @@ download_path = "/tmp"
 criterion = "val_ll_mean"
 k = 1
 
-prior_config_proj_col = "fp_id"
-dataset_restriction = "id = 'f1ae78885d2ace1ba976199d4cf1a4d6'"
-data_loader_config_table = DataLoaderConfig & dataset_restriction
-best_val_prior_results = fetch_best_model_results(
-    result_table_name=FlowPriorResult,
-    config_table_name=FlowPriorConfig,
-    data_loader_config_table_name=data_loader_config_table,
-    trainer_config_table_name=FPTrainerConfig,
-    config_proj_col=prior_config_proj_col,
-    criterion=criterion,
-    k=k,
-    download_path=download_path,
-)
+dataset_restriction = "dl_id = 'f7b32dd97feda9f34e2b47e24fa3d18b'"
+best_val_prior_results = (FlowPriorResult & dataset_restriction).fetch(
+    download_path=download_path, order_by=f"{criterion} DESC", as_dict=True, limit=k
+)[0]
 
-likelihood_config_proj_col = "ll_id"
-best_val_likelihood_results = fetch_best_model_results(
-    result_table_name=LikelihoodResult,
-    config_table_name=LikelihoodConfig,
-    data_loader_config_table_name=data_loader_config_table,
-    trainer_config_table_name=LLTrainerConfig,
-    config_proj_col=likelihood_config_proj_col,
-    criterion=criterion,
-    k=k,
-    download_path=download_path,
-)
+best_val_likelihood_results = (LikelihoodResult & dataset_restriction).fetch(
+    download_path=download_path, order_by=f"{criterion} DESC", as_dict=True, limit=k
+)[0]
 
 # use best prior and likelihood model result ids to populate the FP and MLPCond tables
 fp_samples_configs = OrderedDict(
@@ -71,7 +54,7 @@ FPSamplesConfig.insert(fp_samples_configs_list, skip_duplicates=True)
 #     "n_samples = 10000 and dl_id = 'f1ae78885d2ace1ba976199d4cf1a4d6'"
 # )
 # restrict to storing 50k samples for the 1 neuron case
-fp_samples_restrictions = "dl_id = 'f1ae78885d2ace1ba976199d4cf1a4d6'"
+fp_samples_restrictions = "dl_id = 'f7b32dd97feda9f34e2b47e24fa3d18b'"
 
 FPSamples.populate(
     fp_samples_restrictions, reserve_jobs=True, suppress_errors=True, order="random"
@@ -112,7 +95,7 @@ sbvp_trainer_id = best_sbvgp_results[0]["sbvp_trainer_id"]
 sbvgp_restrictions = (
     f"sbvp_id = '{sbvp_id}' "
     # f"and sbvp_trainer_id = '{sbvp_trainer_id}' "
-    f"and dl_id = 'f1ae78885d2ace1ba976199d4cf1a4d6'"
+    f"and dl_id = 'f7b32dd97feda9f34e2b47e24fa3d18b'"
 )
 
 

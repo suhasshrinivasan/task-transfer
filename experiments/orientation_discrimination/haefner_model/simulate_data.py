@@ -191,11 +191,11 @@ def main():
     # simulate_data(**cfg.haefner_model_4neuron_task1)
     # simulate_data(**cfg.haefner_model_4neuron_task2)
 
-    simulate_data(**cfg.haefner_model_1neuron_highdelta_task1)
-    simulate_data(**cfg.haefner_model_1neuron_highdelta_task2)
+    # simulate_data(**cfg.haefner_model_1neuron_highdelta_task1)
+    # simulate_data(**cfg.haefner_model_1neuron_highdelta_task2)
 
-    simulate_data(**cfg.haefner_model_2neuron_highdelta_task1)
-    simulate_data(**cfg.haefner_model_2neuron_highdelta_task2)
+    # simulate_data(**cfg.haefner_model_2neuron_highdelta_task1)
+    # simulate_data(**cfg.haefner_model_2neuron_highdelta_task2)
 
 
 if __name__ == "__main__":
