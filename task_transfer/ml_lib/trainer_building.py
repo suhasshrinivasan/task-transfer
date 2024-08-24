@@ -76,6 +76,7 @@ def build_conditional_trainer(
     logging_type,
     device,
     model_display_name,
+    add_eps_to_data=False,
 ):
     """
     Build the trainer for the likelihood model.
@@ -86,9 +87,8 @@ def build_conditional_trainer(
     Returns:
         Trainer: The trainer for the likelihood model.
     """
-
     loss_criterion = lambda model, batch: conditional_nll(
-        model, batch, data_dim, cond_dim
+        model, batch, data_dim, cond_dim, add_eps=add_eps_to_data
     )
     eval_criterion = eval_criterion
     eval_params = eval_params

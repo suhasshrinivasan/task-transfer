@@ -48,7 +48,6 @@ def conditional_nll(model, batch, data_dim, cond_dim, add_eps=False):
     data = batch[data_dim]
     cond = batch[cond_dim]
     if add_eps:
-        print("!!!Warning!!! adding eps to data")
         data = data + torch.finfo(data.dtype).eps
     nll = -model(data, cond=cond)
     return nll

@@ -29,6 +29,32 @@ def fetch_prior_cond_samples_path(prior_table, prior_key, cond_table, cond_key):
     return prior_samples_path, cond_samples_path
 
 
+def fetch_adapt_prior_cond_samples_path(prior_table, cond_table, key):
+    """
+    Fetch the sample paths for adapted prior and conditional tables.
+
+    This function retrieves the sample file paths for the specified adapted prior
+    and conditional tables based on the provided key. The sample paths are downloaded
+    to a temporary directory and then returned.
+
+    Parameters:
+    prior_table (object): The table containing adapted prior samples.
+    cond_table (object): The table containing adapted conditional samples.
+    key (dict): The key used to identify the specific adapted samples in the prior and cond tables.
+
+    Returns:
+    tuple: A tuple containing the paths to the adapted prior and conditional samples.
+    """
+
+    # Fetch the adapted prior sample path based on the key
+    prior_samples_path = (prior_table & key).fetch1(download_path="/tmp")["samples"]
+
+    # Fetch the adapted conditional sample path based on the key
+    cond_samples_path = (cond_table & key).fetch1(download_path="/tmp")["samples"]
+
+    return prior_samples_path, cond_samples_path
+
+
 def fetch_best_model_results(
     result_table_name,
     config_table_name,

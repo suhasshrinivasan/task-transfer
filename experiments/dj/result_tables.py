@@ -13,7 +13,10 @@ from ..learning.train_likelihood import train_likelihood
 from ..learning.train_posterior import train_sbvp, train_vpost_prior
 from ..learning.train_sysident import train_sysident
 from .dataloader_tables import AltDataLoaderConfig, DataLoaderConfig
-from .dj_helpers import fetch_prior_cond_samples_path
+from .dj_helpers import (
+    fetch_adapt_prior_cond_samples_path,
+    fetch_prior_cond_samples_path,
+)
 from .likelihood_tables import LikelihoodConfig
 from .posterior_tables import SBVGPConfig, VPostPriorConfig
 from .prior_tables import AdaptPriorConfig, FlowPriorConfig
@@ -1041,141 +1044,142 @@ class AdaptMLPCondSamples(dj.Computed):
             self.insert1(key)
 
 
-# @schema
-# class SBVGPAdaptedResult(dj.Computed):
-#     """
-#     Result table for the Sample Based Variational Gamma Posterior incorporating adapted prior table AdaptPriorResult
-#     """
+@schema
+class SBVGPAdaptedResult(dj.Computed):
+    """
+    Result table for the Sample Based Variational Gamma Posterior incorporating adapted prior table AdaptPriorResult
+    """
 
-#     USE_WANDB = False
-#     FORCE_GPU = False
+    USE_WANDB = False
+    FORCE_GPU = False
 
-#     definition = """
-#     -> SBVGPConfig.proj(sbvp_id='id')
-#     -> SBVGPTrainerConfig.proj(sbvp_trainer_id='id')
-#     -> AdaptPriorSamplesConfig.proj(fp_samples_id='fp_id', data_seed='seed')
-#     ---
-#     train_ll_mean: double    # mean per dimension, per sample, in nats
-#     train_ll_sem: double    # standard error of the mean
-#     val_ll_mean: double
-#     val_ll_sem: double
-#     test_ll_mean: double
-#     test_ll_sem: double
+    definition = """
+    -> SBVGPConfig.proj(sbvp_id='id')
+    -> SBVGPTrainerConfig.proj(sbvp_trainer_id='id')
+    -> AdaptPriorSamplesConfig.proj(fp_samples_id='fp_id', data_seed='seed')
+    ---
+    train_ll_mean: double    # mean per dimension, per sample, in nats
+    train_ll_sem: double    # standard error of the mean
+    val_ll_mean: double
+    val_ll_sem: double
+    test_ll_mean: double
+    test_ll_sem: double
 
-#     train_ll_mean_sample: double    # mean per dimension, per sample, in nats
-#     train_ll_sem_sample: double    # standard error of the mean
-#     val_ll_mean_sample: double
-#     val_ll_sem_sample: double
-#     test_ll_mean_sample: double
-#     test_ll_sem_sample: double
+    train_ll_mean_sample: double    # mean per dimension, per sample, in nats
+    train_ll_sem_sample: double    # standard error of the mean
+    val_ll_mean_sample: double
+    val_ll_sem_sample: double
+    test_ll_mean_sample: double
+    test_ll_sem_sample: double
 
-#     tracker_output: attach@external
-#     eval_output: attach@external
-#     model: attach@external
-#     """
+    tracker_output: attach@external
+    eval_output: attach@external
+    model: attach@external
+    """
 
-#     def make(self, key):
-#         print("Received key ->", key)
-#         # get posterior args
-#         posterior_args = (SBVGPConfig & {"id": key["sbvp_id"]}).fetch1()
-#         posterior_args["dist"] = "gamma"
+    def make(self, key):
+        print("Received key ->", key)
+        # get posterior args
+        posterior_args = (SBVGPConfig & {"id": key["sbvp_id"]}).fetch1()
+        posterior_args["dist"] = "gamma"
 
-#         # get the FPSamples and MLPCondSamples keys
-#         FPSamples_key = (
-#             FPSamplesConfig
-#             & {
-#                 "fp_id": key["fp_samples_id"],
-#                 "dl_id": key["dl_id"],
-#                 "trainer_id": key["trainer_id"],
-#                 "seed": key["data_seed"],
-#                 "n_samples": key["n_samples"],
-#             }
-#         ).fetch1()
-#         # Use MLPCondSamplesConfig2 instead of MLPCondSamplesConfig
-#         MLPCondSamples_key = (
-#             MLPCondSamplesConfig2 & {"ll_id": key["mlpcond_samples_id"]}
-#         ).fetch1()
-#         # Use MLPCondSamples2 instead of MLPCondSamples
-#         prior_samples_path, cond_samples_path = fetch_prior_cond_samples_path(
-#             FPSamples, FPSamples_key, MLPCondSamples2, MLPCondSamples_key
-#         )
+        # get the AdaptPriorSamples and AdaptMLPCondSamples keys
+        adapt_prior_samples_key = (
+            AdaptPriorSamplesConfig
+            & {
+                "adapt_prior_seed": key["adapt_prior_seed"],
+                "prior_fp_id": key["prior_fp_id"],
+                "prior_trainer_id": key["prior_trainer_id"],
+                "likelihood_id": key["likelihood_id"],
+                "likelihood_trainer_id": key["likelihood_trainer_id"],
+                "orig_dl_id": key["orig_dl_id"],
+                "adapt_prior_trainer_id": key["adapt_prior_trainer_id"],
+                "alt_dl_id": key["alt_dl_id"],
+                "n_samples": key["n_samples"],
+                "seed": key["data_seed"],
+            }
+        ).fetch1()
+        # Use MLPCondSamples2 instead of MLPCondSamples
+        prior_samples_path, cond_samples_path = fetch_adapt_prior_cond_samples_path(
+            AdaptPriorSamples, AdaptMLPCondSamples, adapt_prior_samples_key
+        )
 
-#         # get data_loader args
-#         data_loader_args = (DataLoaderConfig & {"id": key["dl_id"]}).fetch1()
-#         data_loader_args["sampled_responses_path"] = prior_samples_path
-#         data_loader_args["sampled_obs_path"] = cond_samples_path
-#         data_loader_args["data_seed"] = key["data_seed"]
+        # get data_loader args
+        data_loader_args = (AltDataLoaderConfig & {"id": key["alt_dl_id"]}).fetch1()
+        data_loader_args["sampled_responses_path"] = prior_samples_path
+        data_loader_args["sampled_obs_path"] = cond_samples_path
+        data_loader_args["data_seed"] = key["data_seed"]
 
-#         # get trainer args
-#         trainer_args = (SBVGPTrainerConfig & {"id": key["sbvp_trainer_id"]}).fetch1()
+        # get trainer args
+        trainer_args = (SBVGPTrainerConfig & {"id": key["sbvp_trainer_id"]}).fetch1()
 
-#         if self.FORCE_GPU:
-#             if torch.cuda.is_available():
-#                 device = torch.device("cuda")
-#             else:
-#                 raise ValueError("GPU not available.")
-#         else:
-#             device = torch.device("cpu")
-#         trainer_args["device"] = device
+        if self.FORCE_GPU:
+            if torch.cuda.is_available():
+                device = torch.device("cuda")
+            else:
+                raise ValueError("GPU not available.")
+        else:
+            device = torch.device("cpu")
+        trainer_args["device"] = device
 
-#         # train the model
-#         (
-#             model,
-#             train_ll_mean,
-#             train_ll_sem,
-#             val_ll_mean,
-#             val_ll_sem,
-#             test_ll_mean,
-#             test_ll_sem,
-#             train_ll_mean_sample,
-#             train_ll_sem_sample,
-#             val_ll_mean_sample,
-#             val_ll_sem_sample,
-#             test_ll_mean_sample,
-#             test_ll_sem_sample,
-#             tracker_output,
-#             eval_output,
-#         ) = train_sbvp(data_loader_args, posterior_args, trainer_args, self.USE_WANDB)
+        # train the model
+        (
+            model,
+            train_ll_mean,
+            train_ll_sem,
+            val_ll_mean,
+            val_ll_sem,
+            test_ll_mean,
+            test_ll_sem,
+            train_ll_mean_sample,
+            train_ll_sem_sample,
+            val_ll_mean_sample,
+            val_ll_sem_sample,
+            test_ll_mean_sample,
+            test_ll_sem_sample,
+            tracker_output,
+            eval_output,
+        ) = train_sbvp(data_loader_args, posterior_args, trainer_args, self.USE_WANDB)
 
-#         with tempfile.TemporaryDirectory() as tmp_dir:
-#             # save model
-#             model_fname = Path(tmp_dir) / f"{make_hash(key)}_model.pt"
-#             torch.save(model, model_fname)
+        with tempfile.TemporaryDirectory() as tmp_dir:
+            # save model
+            model_fname = Path(tmp_dir) / f"{make_hash(key)}_model.pt"
+            torch.save(model, model_fname)
 
-#             # save tracker output
-#             tracker_output_fname = (
-#                 Path(tmp_dir) / f"{make_hash(key)}_tracker_output.pkl"
-#             )
-#             with open(tracker_output_fname, "wb") as f:
-#                 pickle.dump(tracker_output, f)
+            # save tracker output
+            tracker_output_fname = (
+                Path(tmp_dir) / f"{make_hash(key)}_tracker_output.pkl"
+            )
+            with open(tracker_output_fname, "wb") as f:
+                pickle.dump(tracker_output, f)
 
-#             # save eval output
-#             eval_output_fname = Path(tmp_dir) / f"{make_hash(key)}_eval_output.pkl"
-#             with open(eval_output_fname, "wb") as f:
-#                 pickle.dump(eval_output, f)
+            # save eval output
+            eval_output_fname = Path(tmp_dir) / f"{make_hash(key)}_eval_output.pkl"
+            with open(eval_output_fname, "wb") as f:
+                pickle.dump(eval_output, f)
 
-#             # insert results
-#             self.insert1(
-#                 {
-#                     **key,
-#                     "train_ll_mean": train_ll_mean,
-#                     "train_ll_sem": train_ll_sem,
-#                     "val_ll_mean": val_ll_mean,
-#                     "val_ll_sem": val_ll_sem,
-#                     "test_ll_mean": test_ll_mean,
-#                     "test_ll_sem": test_ll_sem,
-#                     "train_ll_mean_sample": train_ll_mean_sample,
-#                     "train_ll_sem_sample": train_ll_sem_sample,
-#                     "val_ll_mean_sample": val_ll_mean_sample,
-#                     "val_ll_sem_sample": val_ll_sem_sample,
-#                     "test_ll_mean_sample": test_ll_mean_sample,
-#                     "test_ll_sem_sample": test_ll_sem_sample,
-#                     "tracker_output": tracker_output_fname,
-#                     "eval_output": eval_output_fname,
-#                     "model": model_fname,
-#                 }
-#             )
-#             print("Results inserted.")
+            # insert results
+            self.insert1(
+                {
+                    **key,
+                    "train_ll_mean": train_ll_mean,
+                    "train_ll_sem": train_ll_sem,
+                    "val_ll_mean": val_ll_mean,
+                    "val_ll_sem": val_ll_sem,
+                    "test_ll_mean": test_ll_mean,
+                    "test_ll_sem": test_ll_sem,
+                    "train_ll_mean_sample": train_ll_mean_sample,
+                    "train_ll_sem_sample": train_ll_sem_sample,
+                    "val_ll_mean_sample": val_ll_mean_sample,
+                    "val_ll_sem_sample": val_ll_sem_sample,
+                    "test_ll_mean_sample": test_ll_mean_sample,
+                    "test_ll_sem_sample": test_ll_sem_sample,
+                    "tracker_output": tracker_output_fname,
+                    "eval_output": eval_output_fname,
+                    "model": model_fname,
+                }
+            )
+            print("Results inserted.")
 
 
 @schema

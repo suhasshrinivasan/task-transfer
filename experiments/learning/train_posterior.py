@@ -88,6 +88,7 @@ def train_sbvp(data_loader_args, posterior_args, trainer_args, use_wandb=False):
         logging_type="wandb" if use_wandb else "stdout",
         device=trainer_args["device"],
         model_display_name="sbvp",
+        add_eps_to_data=True if posterior_args["dist"] == "gamma" else False,
     )
 
     # if use_wandb:
