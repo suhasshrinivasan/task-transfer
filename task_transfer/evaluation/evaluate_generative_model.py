@@ -300,7 +300,7 @@ def compute_logl(
         )  # here the model is the marginal model
     else:
         logl_fn = lambda model, batch, data_dim, cond_dim: conditional_nll(
-            model, batch, data_dim, cond_dim
+            model, batch, data_dim, cond_dim, add_eps_to_data_dim
         )  # here the model is the conditional model
     log_probs = []
     with torch.no_grad():
@@ -308,10 +308,6 @@ def compute_logl(
         model = model.to(device)
         for batch in data_loader:
             batch = [b.to(device) for b in batch]
-            if add_eps_to_data_dim:
-                batch[data_dim] = (
-                    batch[data_dim] + torch.finfo(batch[data_dim].dtype).eps
-                )
             log_prob = -logl_fn(model, batch, data_dim, cond_dim)
             log_probs.append(log_prob)
         if reduction == "mean":

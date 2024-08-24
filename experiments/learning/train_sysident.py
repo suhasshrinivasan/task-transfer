@@ -1,5 +1,5 @@
 import wandb
-from task_transfer.evaluation.evaluate_generative_model import logl_conditional
+from task_transfer.evaluation.evaluate_generative_model import compute_logl
 from task_transfer.ml_lib.data_loading import build_dataloaders
 from task_transfer.ml_lib.model_building import build_conc_rate_mlp, build_conditional
 from task_transfer.ml_lib.trainer_building import build_conditional_trainer
@@ -40,6 +40,8 @@ def train_sysident(data_loader_args, sysident_args, trainer_args, use_wandb=Fals
     else:
         raise NotImplementedError("Unknown posterior distribution")
 
+    add_eps_to_data = True if sysident_args["cond_dist"] == "gamma" else False
+
     # TODO: Set response_dim based on the dataloader args
     response_dim = 0  # set via experimenter's knowledge of the dataloader
     image_dim = 1  # set via experimenter's knowledge of the dataloader
@@ -57,7 +59,7 @@ def train_sysident(data_loader_args, sysident_args, trainer_args, use_wandb=Fals
         logging_type="wandb" if use_wandb else "stdout",
         device=trainer_args["device"],
         model_display_name="sysident",
-        add_eps_to_data=True if sysident_args["cond_dist"] == "gamma" else False,
+        add_eps_to_data=add_eps_to_data,
     )
 
     trainer_output = trainer.train(
@@ -69,27 +71,37 @@ def train_sysident(data_loader_args, sysident_args, trainer_args, use_wandb=Fals
     tracker_output = trainer_output["tracker_output"]
     eval_output = trainer_output["eval_output"]
 
-    train_ll_mean, train_ll_sem = logl_conditional(
+    train_ll_mean, train_ll_sem = compute_logl(
         model=model,
         data_loader=train_loader,
         data_dim=response_dim,
         cond_dim=image_dim,
         device=trainer.device,
+        reduction="mean",
+        normalize="none",
+        add_eps_to_data_dim=add_eps_to_data,
     )
-    val_ll_mean, val_ll_sem = logl_conditional(
+    val_ll_mean, val_ll_sem = compute_logl(
         model=model,
         data_loader=val_loader,
         data_dim=response_dim,
         cond_dim=image_dim,
         device=trainer.device,
+        reduction="mean",
+        normalize="none",
+        add_eps_to_data_dim=add_eps_to_data,
     )
-    test_ll_mean, test_ll_sem = logl_conditional(
+    test_ll_mean, test_ll_sem = compute_logl(
         model=model,
         data_loader=test_loader,
         data_dim=response_dim,
         cond_dim=image_dim,
         device=trainer.device,
+        reduction="mean",
+        normalize="none",
+        add_eps_to_data_dim=add_eps_to_data,
     )
+
     return (
         model,
         train_ll_mean,

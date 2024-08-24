@@ -7,7 +7,6 @@ import wandb
 from task_transfer.evaluation.evaluate_generative_model import (
     compute_logl,
     compute_var_marginal,
-    logl_conditional,
     logl_mc_marginal,
     vpost_prior_eval_criterion,
 )
@@ -74,6 +73,8 @@ def train_sbvp(data_loader_args, posterior_args, trainer_args, use_wandb=False):
     response_dim = 0  # set via experimenter's knowledge of the dataloader
     image_dim = 1  # set via experimenter's knowledge of the dataloader
 
+    add_eps_to_data = True if posterior_args["dist"] == "gamma" else False
+
     trainer = build_conditional_trainer(
         model=model,
         data_dim=response_dim,
@@ -88,7 +89,7 @@ def train_sbvp(data_loader_args, posterior_args, trainer_args, use_wandb=False):
         logging_type="wandb" if use_wandb else "stdout",
         device=trainer_args["device"],
         model_display_name="sbvp",
-        add_eps_to_data=True if posterior_args["dist"] == "gamma" else False,
+        add_eps_to_data=add_eps_to_data,
     )
 
     # if use_wandb:
@@ -106,26 +107,35 @@ def train_sbvp(data_loader_args, posterior_args, trainer_args, use_wandb=False):
 
     with torch.no_grad():
         model.eval()
-        train_ll_mean_sample, train_ll_sem_sample = logl_conditional(
+        train_ll_mean_sample, train_ll_sem_sample = compute_logl(
             model=model,
             data_loader=samples_train_loader,
             data_dim=response_dim,
             cond_dim=image_dim,
             device=trainer.device,
+            reduction="mean",
+            normalize="none",
+            add_eps_to_data_dim=add_eps_to_data,
         )
-        val_ll_mean_sample, val_ll_sem_sample = logl_conditional(
+        val_ll_mean_sample, val_ll_sem_sample = compute_logl(
             model=model,
             data_loader=samples_val_loader,
             data_dim=response_dim,
             cond_dim=image_dim,
             device=trainer.device,
+            reduction="mean",
+            normalize="none",
+            add_eps_to_data_dim=add_eps_to_data,
         )
-        test_ll_mean_sample, test_ll_sem_sample = logl_conditional(
+        test_ll_mean_sample, test_ll_sem_sample = compute_logl(
             model=model,
             data_loader=samples_test_loader,
             data_dim=response_dim,
             cond_dim=image_dim,
             device=trainer.device,
+            reduction="mean",
+            normalize="none",
+            add_eps_to_data_dim=add_eps_to_data,
         )
 
     # also evaluate on real data
@@ -141,26 +151,35 @@ def train_sbvp(data_loader_args, posterior_args, trainer_args, use_wandb=False):
     # now evaluate the model on the real data
     with torch.no_grad():
         model.eval()
-        train_ll_mean_real, train_ll_sem_real = logl_conditional(
+        train_ll_mean_real, train_ll_sem_real = compute_logl(
             model=model,
             data_loader=real_train_loader,
             data_dim=response_dim,
             cond_dim=image_dim,
             device=trainer.device,
+            reduction="mean",
+            normalize="none",
+            add_eps_to_data_dim=add_eps_to_data,
         )
-        val_ll_mean_real, val_ll_sem_real = logl_conditional(
+        val_ll_mean_real, val_ll_sem_real = compute_logl(
             model=model,
             data_loader=real_val_loader,
             data_dim=response_dim,
             cond_dim=image_dim,
             device=trainer.device,
+            reduction="mean",
+            normalize="none",
+            add_eps_to_data_dim=add_eps_to_data,
         )
-        test_ll_mean_real, test_ll_sem_real = logl_conditional(
+        test_ll_mean_real, test_ll_sem_real = compute_logl(
             model=model,
             data_loader=real_test_loader,
             data_dim=response_dim,
             cond_dim=image_dim,
             device=trainer.device,
+            reduction="mean",
+            normalize="none",
+            add_eps_to_data_dim=add_eps_to_data,
         )
     return (
         model,
