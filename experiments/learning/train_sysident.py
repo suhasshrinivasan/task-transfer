@@ -57,6 +57,7 @@ def train_sysident(data_loader_args, sysident_args, trainer_args, use_wandb=Fals
         logging_type="wandb" if use_wandb else "stdout",
         device=trainer_args["device"],
         model_display_name="sysident",
+        add_eps_to_data=True if sysident_args["cond_dist"] == "gamma" else False,
     )
 
     trainer_output = trainer.train(
