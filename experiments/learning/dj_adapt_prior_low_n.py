@@ -21,7 +21,7 @@ download_path = "/tmp"
 criterion = "val_ll_mean"
 k = 1
 
-dataset_restriction = "dl_id = 'f7b32dd97feda9f34e2b47e24fa3d18b'"
+dataset_restriction = "(dl_id = '8e9be142eedb21007255e89dbff362da' or dl_id = 'bb9bdd1ccd59e5a8c801d7f2d43e0317')"
 best_val_prior_results = (FlowPriorResult & dataset_restriction).fetch(
     download_path=download_path, order_by="val_ll_mean DESC", as_dict=True, limit=k
 )[0]
@@ -90,8 +90,8 @@ AdaptPriorResult.FORCE_GPU = True
 restrictions = (
     "seed > 0 and "
     "(trainer_id = 'eabf636932f56d44dcddf7300cf67f63' or trainer_id = '38da520d4873f6c53b3dcf33746e62ab') and "
-    "dl_id = '94efb58694007205fac996d7963f88c5' and "
-    "orig_dl_id = 'f7b32dd97feda9f34e2b47e24fa3d18b'"
+    "((dl_id = 'd74090584b0b974c4444a5ec64c3d87d' and orig_dl_id = '8e9be142eedb21007255e89dbff362da') or "
+    "(dl_id = '5352c4a57ef18797b082283de593157b' and orig_dl_id = 'bb9bdd1ccd59e5a8c801d7f2d43e0317'))"
 )
 
 AdaptPriorResult.populate(

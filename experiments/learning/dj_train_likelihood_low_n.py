@@ -4,11 +4,10 @@ from experiments.dj.likelihood_tables import LikelihoodConfig
 from experiments.dj.result_tables import LikelihoodResult
 from experiments.dj.trainer_tables import LLTrainerConfig
 
-# learn flow model on <4neuro datasets
+# learn flow model on <4neuro high delta datasets
 # ids are
-#   05977a317062b759857ee411a2e60648 (1 neuron task 1)
-#   05977a317062b759857ee411a2e60648 (2 neurons task 1)
-#   4477b5e82704db0bc19727864c7ef5aa (4 neurons task 1)
+#   8e9be142eedb21007255e89dbff362da (2 neurons task 1)
+#   bb9bdd1ccd59e5a8c801d7f2d43e0317 (4 neurons task 1)
 # but don't train all combinations
 # pick the best likelihood model on hierarchical 45 neuron dataset and borrow
 # the same architecture and other hyperparameters
@@ -40,7 +39,7 @@ best_val_likelihood_results = (LikelihoodResult & dataset_restriction).fetch(
 # set dl_id to the flat haefner dataset
 restriction = (
     f"ll_id = '{best_val_likelihood_results['ll_id']}' "
-    f"and dl_id = 'f7b32dd97feda9f34e2b47e24fa3d18b'"
+    f"and (dl_id = '8e9be142eedb21007255e89dbff362da' or dl_id = 'bb9bdd1ccd59e5a8c801d7f2d43e0317')"
 )
 LikelihoodResult.FORCE_GPU = True
 # LikelihoodResult.populate(

@@ -32,7 +32,7 @@ best_val_prior_results = (FlowPriorResult & dataset_restriction).fetch(
 # set dl_id to the 1neuron haefner dataset
 restriction = (
     f"fp_id = '{best_val_prior_results['fp_id']}' "
-    f"and dl_id = '94efb58694007205fac996d7963f88c5'"
+    f"and (dl_id = '8e9be142eedb21007255e89dbff362da' or dl_id = 'bb9bdd1ccd59e5a8c801d7f2d43e0317')"
 )
 # FlowPriorResult.populate(
 #     restriction,
