@@ -16,6 +16,42 @@ from ..ml_lib.loss_criteria import (
 from ..utils.utils import compute_uncertainty, convert_unit, normalize_tensor, reduce
 
 
+def compute_logl(
+    model,
+    data_loader,
+    data_dim,
+    cond_dim=None,
+    device="cpu",
+    reduction="mean",
+    uncertainty="sem",
+    normalize="none",
+    unit="nats",
+    add_eps_to_data_dim=False,
+):
+    if cond_dim is None:
+        logl_fn = lambda model, batch, data_dim, cond_dim: marginal_nll(
+            model, batch, data_dim
+        )  # here the model is the marginal model
+    else:
+        logl_fn = lambda model, batch, data_dim, cond_dim: conditional_nll(
+            model, batch, data_dim, cond_dim, add_eps_to_data_dim
+        )  # here the model is the conditional model
+    log_probs = []
+    with torch.no_grad():
+        model.eval()
+        model = model.to(device)
+        for batch in data_loader:
+            batch = [b.to(device) for b in batch]
+            log_prob = -logl_fn(model, batch, data_dim, cond_dim)
+            log_probs.append(log_prob)
+    lp = reduce(log_probs, reduction)
+    lp_uncertainty = compute_uncertainty(log_probs, uncertainty)
+    data_sample = batch[data_dim]
+    lp = normalize_tensor(lp, normalize, data_sample)
+    lp = convert_unit(lp, unit)
+    return lp, lp_uncertainty
+
+
 def compute_var_marginal(
     var_model,
     data_loader,
@@ -273,70 +309,6 @@ def compute_joint_logl(
             raise ValueError("Unknown uncertainty measure")
         if normalize != "none":
             raise ValueError("Normalization not supported for joint log-likelihood")
-        if unit == "nats":
-            pass
-        elif unit == "bits":
-            lp /= np.log(2)
-        else:
-            raise ValueError("Unknown unit")
-    return lp, lp_uncertainty
-
-
-def compute_logl(
-    model,
-    data_loader,
-    data_dim,
-    cond_dim=None,
-    device="cpu",
-    reduction="mean",
-    uncertainty="sem",
-    normalize="none",
-    unit="nats",
-    add_eps_to_data_dim=False,
-):
-    if cond_dim is None:
-        logl_fn = lambda model, batch, data_dim, cond_dim: marginal_nll(
-            model, batch, data_dim
-        )  # here the model is the marginal model
-    else:
-        logl_fn = lambda model, batch, data_dim, cond_dim: conditional_nll(
-            model, batch, data_dim, cond_dim, add_eps_to_data_dim
-        )  # here the model is the conditional model
-    log_probs = []
-    with torch.no_grad():
-        model.eval()
-        model = model.to(device)
-        for batch in data_loader:
-            batch = [b.to(device) for b in batch]
-            log_prob = -logl_fn(model, batch, data_dim, cond_dim)
-            log_probs.append(log_prob)
-        if reduction == "mean":
-            lp = torch.cat(log_probs).mean().item()
-        elif reduction == "sum":
-            lp = torch.cat(log_probs).sum().item()
-        elif reduction == "none":
-            lp = torch.cat(log_probs)
-        else:
-            raise ValueError("Unknown reduction")
-        if uncertainty == "sem":
-            lp_uncertainty = torch.cat(log_probs).std() / (len(log_probs) ** 0.5)
-            lp_uncertainty = lp_uncertainty.item()
-        elif uncertainty == "std":
-            lp_uncertainty = torch.cat(log_probs).std()
-            lp_uncertainty = lp_uncertainty.item()
-        elif uncertainty == "none":
-            lp_uncertainty = None
-        else:
-            raise ValueError("Unknown uncertainty measure")
-        if normalize == "per_dim":
-            batch = next(iter(data_loader))
-            data = batch[data_dim]
-            lp /= data.shape[1:].numel()
-        elif normalize == "none":
-            pass
-        elif normalize == "per_dim":
-            n_dims = data.shape[1:].numel()
-            lp /= n_dims
         if unit == "nats":
             pass
         elif unit == "bits":
