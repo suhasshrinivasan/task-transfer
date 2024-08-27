@@ -17,7 +17,7 @@ download_path = "/tmp"
 criterion = "val_marginal_obs_ll_mean"
 k = 1
 
-dataset_restriction = "dl_id = 'd74090584b0b974c4444a5ec64c3d87d' or dl_id = '5352c4a57ef18797b082283de593157b'"
+dataset_restriction = "dl_id = '5352c4a57ef18797b082283de593157b'"
 best_val_adapt_prior = (AdaptPriorResult & dataset_restriction).fetch(
     download_path=download_path, order_by=f"{criterion} DESC", as_dict=True, limit=k
 )[0]
@@ -61,7 +61,7 @@ sbvp_trainer_id = best_sbvgp_results[0]["sbvp_trainer_id"]
 sbvgp_restrictions = (
     f"sbvp_id = '{sbvp_id}' "
     # f"and sbvp_trainer_id = '{sbvp_trainer_id}' "
-    f"and (alt_dl_id = 'd74090584b0b974c4444a5ec64c3d87d' or alt_dl_id = '5352c4a57ef18797b082283de593157b')"
+    f"and alt_dl_id = '5352c4a57ef18797b082283de593157b'"
 )
 
 SBVGPAdaptedResult.populate(
