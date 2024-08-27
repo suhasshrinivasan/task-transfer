@@ -26,7 +26,9 @@ from task_transfer.ml_lib.trainer_building import (
 )
 
 
-def train_sbvp(data_loader_args, posterior_args, trainer_args, use_wandb=False):
+def train_sbvp(
+    data_loader_args, posterior_args, trainer_args, use_wandb=False, dj_conn=None
+):
     if use_wandb:
         wandb_run = wandb.init(
             project="task_transfer_train_sbvp",
@@ -90,6 +92,7 @@ def train_sbvp(data_loader_args, posterior_args, trainer_args, use_wandb=False):
         device=trainer_args["device"],
         model_display_name="sbvp",
         add_eps_to_data=add_eps_to_data,
+        dj_conn=dj_conn,
     )
 
     # if use_wandb:
@@ -100,6 +103,7 @@ def train_sbvp(data_loader_args, posterior_args, trainer_args, use_wandb=False):
         train_loader=samples_train_loader,
         val_loader=samples_val_loader,
         n_epochs=trainer_args["n_epochs"],
+        ping_dj=False if dj_conn is None else True,
         # watch_grad_norm=True,  # TODO: debug code. cleanup
     )
     tracker_output = trainer_output["tracker_output"]

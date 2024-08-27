@@ -5,7 +5,9 @@ from task_transfer.ml_lib.model_building import build_conc_rate_mlp, build_condi
 from task_transfer.ml_lib.trainer_building import build_conditional_trainer
 
 
-def train_sysident(data_loader_args, sysident_args, trainer_args, use_wandb=False):
+def train_sysident(
+    data_loader_args, sysident_args, trainer_args, use_wandb=False, dj_conn=None
+):
     if use_wandb:
         wandb_run = wandb.init(
             project="task_transfer_train_sysident",
@@ -60,6 +62,7 @@ def train_sysident(data_loader_args, sysident_args, trainer_args, use_wandb=Fals
         device=trainer_args["device"],
         model_display_name="sysident",
         add_eps_to_data=add_eps_to_data,
+        dj_conn=dj_conn,
     )
 
     trainer_output = trainer.train(
@@ -67,6 +70,7 @@ def train_sysident(data_loader_args, sysident_args, trainer_args, use_wandb=Fals
         train_loader=train_loader,
         val_loader=val_loader,
         n_epochs=trainer_args["n_epochs"],
+        ping_dj=False if dj_conn is None else True,
     )
     tracker_output = trainer_output["tracker_output"]
     eval_output = trainer_output["eval_output"]
