@@ -77,6 +77,7 @@ def build_conditional_trainer(
     device,
     model_display_name,
     add_eps_to_data=False,
+    dj_conn=None,
 ):
     """
     Build the trainer for the likelihood model.
@@ -112,6 +113,7 @@ def build_conditional_trainer(
         early_stopping_patience=early_stopping_patience,
         logger=train_logger,
         device=device,
+        dj_conn=dj_conn,
     )
     return trainer
 
