@@ -331,7 +331,7 @@ class SIResult(dj.Computed):
             tracker_output,
             eval_output,
         ) = train_sysident(
-            data_loader_args, sysident_args, trainer_args, self.USE_WANDB
+            data_loader_args, sysident_args, trainer_args, self.USE_WANDB, dj.conn()
         )
         print("Model training completed.")
 
@@ -632,7 +632,9 @@ class SBVGPResult2(dj.Computed):
             test_ll_sem_sample,
             tracker_output,
             eval_output,
-        ) = train_sbvp(data_loader_args, posterior_args, trainer_args, self.USE_WANDB)
+        ) = train_sbvp(
+            data_loader_args, posterior_args, trainer_args, self.USE_WANDB, dj.conn()
+        )
 
         with tempfile.TemporaryDirectory() as tmp_dir:
             # save model
@@ -1139,7 +1141,9 @@ class SBVGPAdaptedResult(dj.Computed):
             test_ll_sem_sample,
             tracker_output,
             eval_output,
-        ) = train_sbvp(data_loader_args, posterior_args, trainer_args, self.USE_WANDB)
+        ) = train_sbvp(
+            data_loader_args, posterior_args, trainer_args, self.USE_WANDB, dj.conn()
+        )
 
         with tempfile.TemporaryDirectory() as tmp_dir:
             # save model
