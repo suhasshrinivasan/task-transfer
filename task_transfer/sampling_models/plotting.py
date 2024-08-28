@@ -18,6 +18,7 @@ def plot_cohen_task(
     task_figfname="task_design.pdf",
     prior_figfname="prior.pdf",
     cdist_figfname="class_distribution.pdf",
+    legend=True,
 ):
     # plot prior distribution of classes
     fig, ax = plt.subplots(dpi=300, figsize=(3, 4))
@@ -68,7 +69,8 @@ def plot_cohen_task(
     ax_task.set_xticklabels(f"{int(xtick)}$^\circ$" for xtick in xticks * 180 / np.pi)
     ax_task.set_xlabel("Orientation $\\theta$ ($^\circ$)", fontsize=fontsize)
     ax_task.set_ylabel("Density $P(\\theta|C)$", fontsize=fontsize)
-    ax_task.legend(loc="upper right", fontsize=fontsize)
+    if legend:
+        ax_task.legend(loc="upper right", fontsize=fontsize)
     ax_task.tick_params(
         axis="both",
         which="major",
@@ -96,7 +98,8 @@ def plot_cohen_task(
     ax_prior.set_xticklabels(f"{int(xtick)}$^\circ$" for xtick in xticks * 180 / np.pi)
     ax_prior.set_xlabel("Orientation $\\theta$ ($^\circ$)", fontsize=fontsize)
     ax_prior.set_ylabel("Density $P(\\theta)$", fontsize=fontsize)
-    ax_prior.legend(loc="upper right", fontsize=fontsize)
+    if legend:
+        ax_prior.legend(loc="upper right", fontsize=fontsize)
     ax_prior.tick_params(
         axis="both",
         which="major",
@@ -111,6 +114,18 @@ def plot_cohen_task(
     ax_prior.spines["left"].set_visible(False)
     ax_prior.set_yticks([])
     fig_prior.savefig(prior_figfname, bbox_inches="tight", transparent=True)
+
+    ax_task.plot(
+        all_orientations,
+        (c1_orientation_density + c2_orientation_density) / 2,
+        color="orange",
+        linewidth=linewidth,
+        linestyle="dashed",
+        label="Prior",
+    )
+    fig_task.savefig(
+        task_figfname[:-4] + "_" + prior_figfname, bbox_inches="tight", transparent=True
+    )
 
 
 def plot_haefner_model(

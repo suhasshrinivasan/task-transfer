@@ -446,39 +446,13 @@ def compute_haefner_logl_i_cond_x(
     normalize="none",
     unit="nats",
 ):
-    lps = []
+    log_probs = []
     for responses, images in data_loader:
-        lps.append(haefner_model.log_prob_i_cond_x(images, responses))
-    lps = torch.cat(lps)
-    if reduction == "mean":
-        lp = lps.mean().item()
-    elif reduction == "sum":
-        lp = lps.sum().item()
-    elif reduction == "none":
-        lp = lps
-    else:
-        raise ValueError("Unknown reduction")
-    if uncertainty == "sem":
-        lp_uncertainty = lps.std() / (len(lps) ** 0.5)
-        lp_uncertainty = lp_uncertainty.item()
-    elif uncertainty == "std":
-        lp_uncertainty = lps.std()
-        lp_uncertainty = lp_uncertainty.item()
-    elif uncertainty == "none":
-        lp_uncertainty = None
-    else:
-        raise ValueError("Unknown uncertainty measure")
-    if normalize == "none":
-        pass
-    elif normalize == "per_dim":
-        n_dims = images.shape[1:].numel()
-        lp /= n_dims
-    if unit == "nats":
-        pass
-    elif unit == "bits":
-        lp /= np.log(2)
-    else:
-        raise ValueError("Unknown unit")
+        log_probs.append(haefner_model.log_prob_i_cond_x(images, responses))
+    lp = reduce(log_probs, reduction)
+    lp_uncertainty = compute_uncertainty(log_probs, uncertainty)
+    lp = normalize_tensor(lp, normalize, images)
+    lp = convert_unit(lp, unit)
     return lp, lp_uncertainty
 
 
@@ -1115,8 +1089,8 @@ def visualize_conditional_features(
     image_len = image.shape[-1]
     h, w = int(image_len**0.5), int(image_len**0.5)
     fig, axs = plt.subplots(
-        7,
-        7,
+        catch_all["n_rows"],
+        catch_all["n_cols"],
         sharey=True,
         dpi=fig_dpi,
     )
