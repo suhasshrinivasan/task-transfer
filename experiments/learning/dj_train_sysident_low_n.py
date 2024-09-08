@@ -38,8 +38,7 @@ trainer_id = best_sysident_results[0]["trainer_id"]
 
 # set dl_id to the <=4neuron haefner dataset
 sysident_restrictions = (
-    f"si_id = '{si_id}' "
-    f"and (dl_id = '8e9be142eedb21007255e89dbff362da' or dl_id = 'bb9bdd1ccd59e5a8c801d7f2d43e0317' or dl_id = 'd74090584b0b974c4444a5ec64c3d87d' or dl_id = '5352c4a57ef18797b082283de593157b')"
+    f"si_id = '{si_id}' and dl_id = '9ef3ae6fea33eba634d928a88b866836'"
 )
 SIResult.populate(
     sysident_restrictions, reserve_jobs=True, suppress_errors=True, order="random"

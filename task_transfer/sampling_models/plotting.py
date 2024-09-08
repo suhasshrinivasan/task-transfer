@@ -19,9 +19,12 @@ def plot_cohen_task(
     prior_figfname="prior.pdf",
     cdist_figfname="class_distribution.pdf",
     legend=True,
+    legend_loc="upper right",
+    title=True,
+    figsize=(4, 4),
 ):
     # plot prior distribution of classes
-    fig, ax = plt.subplots(dpi=300, figsize=(3, 4))
+    fig, ax = plt.subplots(dpi=300, figsize=figsize)
     x = [0, 1]
     height = [p_c, 1 - p_c]
     ax.bar(x=x, height=height, color="seagreen")
@@ -38,7 +41,8 @@ def plot_cohen_task(
     )
     ax.set_ylabel("$P(C)$", fontsize=fontsize)
     ax.set_xlabel("Class", fontsize=fontsize)
-    ax.set_title("Class distribution", fontsize=fontsize)
+    if title:
+        ax.set_title("Class distribution", fontsize=fontsize)
     sns.despine(ax=ax, trim=True)
     ax.spines[["bottom", "left"]].set_linewidth(tick_width)
     fig.savefig(cdist_figfname, bbox_inches="tight", transparent=True)
@@ -48,7 +52,7 @@ def plot_cohen_task(
     # TODO: make a task object instead of defining the orientation density here
     c1_orientation_density = cos2_von_mises(all_orientations, c1_psi, 1.0)
     c2_orientation_density = cos2_von_mises(all_orientations, c2_psi, 1.0)
-    fig_task, ax_task = plt.subplots(dpi=dpi)
+    fig_task, ax_task = plt.subplots(dpi=dpi, figsize=figsize)
     ax_task.plot(
         all_orientations,
         c1_orientation_density,
@@ -67,10 +71,10 @@ def plot_cohen_task(
     xticks = np.array([0, np.pi / 4, np.pi / 2, 3 * np.pi / 4, np.pi])
     ax_task.set_xticks(xticks)
     ax_task.set_xticklabels(f"{int(xtick)}$^\circ$" for xtick in xticks * 180 / np.pi)
-    ax_task.set_xlabel("Orientation $\\theta$ ($^\circ$)", fontsize=fontsize)
-    ax_task.set_ylabel("Density $P(\\theta|C)$", fontsize=fontsize)
+    ax_task.set_xlabel("Orientation $\\omega$ ($^\circ$)", fontsize=fontsize)
+    ax_task.set_ylabel("Density $P(\\omega|C)$", fontsize=fontsize)
     if legend:
-        ax_task.legend(loc="upper right", fontsize=fontsize)
+        ax_task.legend(loc=legend_loc, fontsize=fontsize, frameon=False)
     ax_task.tick_params(
         axis="both",
         which="major",
@@ -78,7 +82,8 @@ def plot_cohen_task(
         length=tick_length,
         width=tick_width,
     )
-    ax_task.set_title("Task design", fontsize=fontsize)
+    if title:
+        ax_task.set_title("Task design", fontsize=fontsize)
     ax_task.spines["bottom"].set_linewidth(tick_width)
     sns.despine(ax=ax_task, trim=True)
     ax_task.spines["left"].set_visible(False)
@@ -86,7 +91,7 @@ def plot_cohen_task(
     fig_task.savefig(task_figfname, bbox_inches="tight", transparent=True)
 
     # plot prior
-    fig_prior, ax_prior = plt.subplots(dpi=dpi)
+    fig_prior, ax_prior = plt.subplots(dpi=dpi, figsize=figsize)
     ax_prior.plot(
         all_orientations,
         (c1_orientation_density + c2_orientation_density) / 2,
@@ -96,10 +101,10 @@ def plot_cohen_task(
     )
     ax_prior.set_xticks(xticks)
     ax_prior.set_xticklabels(f"{int(xtick)}$^\circ$" for xtick in xticks * 180 / np.pi)
-    ax_prior.set_xlabel("Orientation $\\theta$ ($^\circ$)", fontsize=fontsize)
-    ax_prior.set_ylabel("Density $P(\\theta)$", fontsize=fontsize)
+    ax_prior.set_xlabel("Orientation $\\omega$ ($^\circ$)", fontsize=fontsize)
+    ax_prior.set_ylabel("Density $P(\\omega)$", fontsize=fontsize)
     if legend:
-        ax_prior.legend(loc="upper right", fontsize=fontsize)
+        ax_prior.legend(loc=legend_loc, fontsize=fontsize, frameon=False)
     ax_prior.tick_params(
         axis="both",
         which="major",
@@ -107,7 +112,8 @@ def plot_cohen_task(
         length=tick_length,
         width=tick_width,
     )
-    ax_prior.set_title("Prior", fontsize=fontsize)
+    if title:
+        ax_prior.set_title("Prior", fontsize=fontsize)
     ax_prior.set_ylim(*ax_task.get_ylim())
     ax_prior.spines["bottom"].set_linewidth(tick_width)
     sns.despine(ax=ax_prior, trim=True)
@@ -142,13 +148,18 @@ def plot_haefner_model(
     xcorr_hist_figname="xcorr_hist.pdf",
     xdist_figname="xdist.pdf",
     plot_corr=True,
+    legend=True,
+    x_color="mediumseagreen",
+    title=True,
+    figsize=(4, 4),
+    x_width_factor=1.5,
 ):
 
     all_orientations = torch.linspace(0, torch.pi, steps=1000)
     c1_orientation_density = cos2_von_mises(all_orientations, model.c1_psi, 1.0)
     c2_orientation_density = cos2_von_mises(all_orientations, model.c2_psi, 1.0)
 
-    _, ax_task = plt.subplots(dpi=dpi)
+    _, ax_task = plt.subplots(dpi=dpi, figsize=figsize)
     ax_task.plot(
         all_orientations,
         c1_orientation_density,
@@ -166,9 +177,10 @@ def plot_haefner_model(
     xticks = np.array([0, np.pi / 4, np.pi / 2, 3 * np.pi / 4, np.pi])
     ax_task.set_xticks(xticks)
     ax_task.set_xticklabels(f"{int(xtick)}$^\circ$" for xtick in xticks * 180 / np.pi)
-    ax_task.set_xlabel("Orientation $\\theta$ ($^\circ$)", fontsize=fontsize)
-    ax_task.set_ylabel("Density $P(\\theta|C)$", fontsize=fontsize)
-    ax_task.legend(loc="upper right", fontsize=fontsize)
+    ax_task.set_xlabel("Orientation $\\omega$ ($^\circ$)", fontsize=fontsize)
+    ax_task.set_ylabel("Density $P(\\omega|C)$", fontsize=fontsize)
+    if legend:
+        ax_task.legend(loc="upper right", fontsize=fontsize, frameon=False)
     ax_task.tick_params(
         axis="both",
         which="major",
@@ -176,7 +188,8 @@ def plot_haefner_model(
         length=tick_length,
         width=tick_width,
     )
-    ax_task.set_title("Task design", fontsize=fontsize)
+    if title:
+        ax_task.set_title("Task design", fontsize=fontsize)
 
     ax_task.spines["bottom"].set_linewidth(tick_width)
     sns.despine(ax=ax_task, trim=True)
@@ -189,7 +202,7 @@ def plot_haefner_model(
     c2_orientation_density = cos2_von_mises(all_orientations, model.c2_psi, 1.0)
 
     # first set the random seed
-    fig_prior, ax_prior = plt.subplots(dpi=dpi)
+    fig_prior, ax_prior = plt.subplots(dpi=dpi, figsize=figsize)
     xticks = np.array([0, np.pi / 4, np.pi / 2, 3 * np.pi / 4, np.pi])
     ax_prior.set_xticks(xticks)
     ax_prior.set_xticklabels(f"{int(xtick)}$^\circ$" for xtick in xticks * 180 / np.pi)
@@ -210,13 +223,13 @@ def plot_haefner_model(
         (c1_orientation_density + c2_orientation_density) / 2,
         color="orange",
         linewidth=linewidth,
-        label="Prior $\\theta$",
+        label="Prior $\\omega$",
         linestyle="dashed",
     )
     ax_prior.set_xlabel(
         "Orientation preference $\\psi^g$ ($^\circ$)", fontsize=fontsize
     )
-    ax_prior.set_ylabel("Density $p(\\theta)$", fontsize=fontsize)
+    ax_prior.set_ylabel("Density $p(\\omega)$", fontsize=fontsize)
     ax_prior.tick_params(
         axis="both",
         which="major",
@@ -224,12 +237,14 @@ def plot_haefner_model(
         length=tick_length,
         width=tick_width,
     )
-    ax_prior.set_title("Activity of G and prior", fontsize=fontsize)
+    if title:
+        ax_prior.set_title("Activity of G and prior", fontsize=fontsize)
     ax_prior.set_ylim(*ax_task.get_ylim())
     ax_prior.spines[["bottom", "left"]].set_linewidth(tick_width)
     ax_prior.set_zorder(ax_g.get_zorder() + 1)
     ax_prior.patch.set_visible(False)
-    ax_prior.legend(loc="upper left", fontsize=fontsize)
+    if legend:
+        ax_prior.legend(loc="upper left", fontsize=fontsize, frameon=False)
     sns.despine(ax=ax_prior, trim=True)
 
     ax_g.set_ylim(ax_prior.get_ylim())
@@ -244,14 +259,15 @@ def plot_haefner_model(
     )
     ax_g.set_ylabel("Probability $P(g_i = 1)$", fontsize=fontsize)
 
-    ax_g.legend(loc="upper right", fontsize=fontsize)
-    # ax_g.set_yticks([0, 0.1, 0.2, 0.3])
+    if legend:
+        ax_g.legend(loc="upper right", fontsize=fontsize, frameon=False)
+    ax_g.set_yticks([0, 0.1, 0.2, 0.3, 0.4, 0.5])
     sns.despine(ax=ax_g, trim=True)
     ax_g.spines["right"].set_visible(True)
     ax_g.spines["left"].set_visible(False)
     fig_prior.savefig(g_figname, bbox_inches="tight", transparent=True)
 
-    fig_prior_x, ax_prior_x = plt.subplots(dpi=dpi)
+    fig_prior_x, ax_prior_x = plt.subplots(dpi=dpi, figsize=figsize)
 
     xticks = np.array([0, np.pi / 4, np.pi / 2, 3 * np.pi / 4, np.pi])
     ax_prior_x.set_xticks(xticks)
@@ -259,34 +275,34 @@ def plot_haefner_model(
         f"{int(xtick)}$^\circ$" for xtick in xticks * 180 / np.pi
     )
     ax_prior_x.set_xlabel(
-        "Orientation preference $\\psi^x$ ($^\circ$)", fontsize=fontsize
+        "Orientation preference $\\psi^r$ ($^\circ$)", fontsize=fontsize
     )
 
     ax_g = ax_prior_x.twinx()
     ax_g.bar(
         model.x_phi,
         samples_dict["tau"].mean(dim=0),
-        width=np.pi / model.n_x,
-        color="indianred",
-        edgecolor="darkred",
+        width=np.pi / model.n_x / x_width_factor,
+        color=x_color,
+        edgecolor="black",
         # alpha=0.5,
-        label="Avg firing rate $x_i$",
+        label="Avg firing rate $z_i$",
         # zorder=0,
         # alpha=0,
     )
-    ax_g.set_ylim([1, 1.4])
+    ax_g.set_ylim([0, 4.0])
 
     ax_prior_x.plot(
         all_orientations,
         (c1_orientation_density + c2_orientation_density) / 2,
         color="orange",
         linewidth=linewidth,
-        label="Prior $\\theta$",
+        label="Prior $\\omega$",
         linestyle="dashed",
         # zorder=2,
         # alpha=0.7
     )
-    ax_prior_x.set_ylabel("Density $p(\\theta)$", fontsize=fontsize, color="darkorange")
+    ax_prior_x.set_ylabel("Density $p(\\omega)$", fontsize=fontsize, color="darkorange")
     ax_prior_x.tick_params(
         axis="both",
         which="major",
@@ -294,7 +310,8 @@ def plot_haefner_model(
         length=tick_length,
         width=tick_width,
     )
-    ax_prior_x.set_title("Activity of X and prior", fontsize=fontsize)
+    if title:
+        ax_prior_x.set_title("Activity of X and prior", fontsize=fontsize)
     ax_prior_x.set_ylim(*ax_task.get_ylim())
     ax_prior_x.set_yticklabels(ax_prior_x.get_yticklabels(), color="darkorange")
 
@@ -303,7 +320,8 @@ def plot_haefner_model(
     ax_prior_x.set_zorder(ax_g.get_zorder() + 1)
     ax_prior_x.patch.set_visible(False)
     # ax_g.axhline(1, color="black", linestyle="--")
-    ax_prior_x.legend(loc="upper left", fontsize=fontsize)
+    if legend:
+        ax_prior_x.legend(loc="upper left", fontsize=fontsize, frameon=False)
     sns.despine(ax=ax_prior_x, trim=True)
 
     ax_g.spines["right"].set_visible(True)
@@ -315,13 +333,14 @@ def plot_haefner_model(
         length=tick_length,
         width=tick_width,
     )
-    ax_g.set_ylabel("Avg firing rate", fontsize=fontsize, color="darkred")
+    ax_g.set_ylabel("Avg firing rate", fontsize=fontsize, color=x_color)
     sns.despine(ax=ax_g, trim=True)
     ax_g.spines["right"].set_visible(True)
     ax_g.spines["right"].set_linewidth(tick_width)
     ax_g.spines["left"].set_visible(False)
-    ax_g.set_yticklabels(ax_g.get_yticklabels(), color="darkred")
-    ax_g.legend(loc="upper right", fontsize=fontsize)
+    ax_g.set_yticklabels(ax_g.get_yticklabels(), color=x_color)
+    if legend:
+        ax_g.legend(loc="upper right", fontsize=fontsize, frameon=False)
     fig_prior_x.savefig(x_figname, bbox_inches="tight", transparent=True)
 
     if plot_corr:
@@ -367,9 +386,10 @@ def plot_haefner_model(
             width=tick_width,
         )
 
-        ax_xcorr.set_ylabel("Preferred orientation $\\psi^x$", fontsize=fontsize)
-        ax_xcorr.set_xlabel("Preferred orientation $\\psi^x$", fontsize=fontsize)
-        ax_xcorr.set_title("Pearson correlation of $x$ (prior)", fontsize=fontsize)
+        ax_xcorr.set_ylabel("Preferred orientation $\\psi^r$", fontsize=fontsize)
+        ax_xcorr.set_xlabel("Preferred orientation $\\psi^r$", fontsize=fontsize)
+        if title:
+            ax_xcorr.set_title("Pearson correlation of $x$ (prior)", fontsize=fontsize)
 
         fig_xcorr.savefig(xcorr_figname, bbox_inches="tight", transparent=True)
 
@@ -425,7 +445,7 @@ def plot_haefner_model(
             ax.text(
                 0.7,
                 0.9,
-                f"$\\Psi^x=${int(np.rad2deg(model.x_phi[idx]))}$^\circ$",
+                f"$\\Psi^r=${int(np.rad2deg(model.x_phi[idx]))}$^\circ$",
                 horizontalalignment="center",
                 verticalalignment="center",
                 transform=ax.transAxes,
