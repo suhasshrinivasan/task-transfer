@@ -5,15 +5,13 @@ FROM ghcr.io/walkerlab/docker-pytorch-cuda:cuda-11.8.0-pytorch-1.13.0-torchvisio
 RUN apt-get update 
 RUN pip3 install --upgrade pip
 
-### apt packages
-# RUN apt install -y fish graphviz
+# graphviz for visualizing pymc models and datajoint schemas
 RUN apt install -y graphviz==2.43.0
 
 ### python packages
 # wandb for visualization, pymc for sampling
-# graphviz for visualizing pymc models
 # datajoint for experiment and data management
-RUN pip3 install wandb==0.17.5 pymc==5.6.1 graphviz==0.20.3 datajoint==0.14.1 pytest==8.2.2 pyparsing==3.1.2
+RUN pip3 install wandb==0.17.5 pymc==5.6.1 datajoint==0.14.1 pytest==8.2.2 pyparsing==3.1.2
 
 # stable diffusion
 # RUN pip3 install --upgrade diffusers transformers scipy accelerate wandb
