@@ -1,7 +1,0 @@
-{
-    "python.experiments.optInto": [
-        "pythonTerminalEnvVarActivation"
-    ],
-    "jupyter.debugJustMyCode": false,
-    "debugpy.debugJustMyCode": false
-}

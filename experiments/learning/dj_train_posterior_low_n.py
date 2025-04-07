@@ -27,7 +27,7 @@ download_path = "/tmp"
 criterion = "val_ll_mean"
 k = 1
 
-dataset_restriction = "dl_id = 'bb9bdd1ccd59e5a8c801d7f2d43e0317'"
+dataset_restriction = "dl_id = '260a5ea8175f75eaef132f42873ad14a'"
 best_val_prior_results = (FlowPriorResult & dataset_restriction).fetch(
     download_path=download_path, order_by=f"{criterion} DESC", as_dict=True, limit=k
 )[0]
@@ -49,12 +49,7 @@ fp_samples_configs_list = dict_product(fp_samples_configs, insert_hash=False)
 
 FPSamplesConfig.insert(fp_samples_configs_list, skip_duplicates=True)
 
-# # restrict to storing 10k samples for the 1 neuron case
-# fp_samples_restrictions = (
-#     "n_samples = 10000 and dl_id = 'f1ae78885d2ace1ba976199d4cf1a4d6'"
-# )
-# restrict to storing 50k samples for the 1 neuron case
-fp_samples_restrictions = "dl_id = 'bb9bdd1ccd59e5a8c801d7f2d43e0317'"
+fp_samples_restrictions = dataset_restriction
 
 FPSamples.populate(
     fp_samples_restrictions, reserve_jobs=True, suppress_errors=True, order="random"
@@ -92,7 +87,7 @@ sbvp_trainer_id = best_sbvgp_results[0]["sbvp_trainer_id"]
 
 # set dl_id to the 1neuron haefner dataset
 sbvgp_restrictions = (
-    f"sbvp_id = '{sbvp_id}' and dl_id = 'bb9bdd1ccd59e5a8c801d7f2d43e0317'"
+    f"sbvp_id = '{sbvp_id}' and dl_id = '260a5ea8175f75eaef132f42873ad14a'"
 )
 
 

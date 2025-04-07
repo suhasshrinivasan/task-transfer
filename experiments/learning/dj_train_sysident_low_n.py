@@ -36,7 +36,6 @@ best_sysident_results = (SIResult & dataset_restriction).fetch(
 si_id = best_sysident_results[0]["si_id"]
 trainer_id = best_sysident_results[0]["trainer_id"]
 
-# set dl_id to the <=4neuron haefner dataset
 sysident_restrictions = (
     f"si_id = '{si_id}' and dl_id = '9ef3ae6fea33eba634d928a88b866836'"
 )

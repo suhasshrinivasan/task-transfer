@@ -212,3 +212,8 @@ def build_vpost_prior_trainer(
         dj_conn=dj_conn,
     )
     return trainer
+
+
+def zero_avoid(dist_type):
+    if dist_type == "gamma":
+        return True

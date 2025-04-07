@@ -376,8 +376,6 @@ def logl_mc_marginal_eval(
 
 
 # TODO: depricate in favor of logl_mc_marginal_eval
-
-
 def logl_mc_marginal(
     joint_model,
     data_loader,

@@ -7,7 +7,7 @@ import wandb
 from task_transfer.evaluation.evaluate_generative_model import (
     compute_logl,
     compute_var_marginal,
-    logl_mc_marginal,
+    logl_mc_marginal_eval,
     vpost_prior_eval_criterion,
 )
 from task_transfer.ml_lib.data_loading import (
@@ -23,6 +23,7 @@ from task_transfer.ml_lib.model_building import (
 from task_transfer.ml_lib.trainer_building import (
     build_conditional_trainer,
     build_vpost_prior_trainer,
+    zero_avoid,
 )
 
 
@@ -234,7 +235,7 @@ def train_vpost_prior(
     n_image_dims = image_sample.shape[1]  # expects flattened image
 
     # build approximate posterior
-    if model_args["posterior_dist"] == "gamma":
+    if model_args["post_dist_type"] == "gamma":
         amortization_fn = build_conc_rate_mlp(
             in_features=n_image_dims,
             out_features_core=n_response_dims,
@@ -244,19 +245,19 @@ def train_vpost_prior(
             nonlin=model_args["post_nonlin"],
             dropout_rate=model_args["post_dropout_rate"],
             init_std=model_args["post_init_std"],
-            nonneg_transform=model_args["post_kwargs"]["post_nonneg_transform"],
-            clamp_pre_conc=model_args["post_kwargs"]["post_clamp_pre_conc"],
-            pre_conc_max=model_args["post_kwargs"]["post_pre_conc_max"],
-            clamp_pre_rate=model_args["post_kwargs"]["post_clamp_pre_rate"],
-            pre_rate_min=model_args["post_kwargs"]["post_pre_rate_min"],
+            nonneg_transform=model_args["post_nonneg_transform"],
+            clamp_pre_conc=model_args["post_kwargs"]["clamp_pre_conc"],
+            pre_conc_max=model_args["post_kwargs"]["pre_conc_max"],
+            clamp_pre_rate=model_args["post_kwargs"]["clamp_pre_rate"],
+            pre_rate_min=model_args["post_kwargs"]["pre_rate_min"],
         )
         posterior = build_conditional(cond_dist="gamma", likelihood=amortization_fn)
-    elif model_args["posterior_dist"] == "gamma_pt_si":
+    elif model_args["post_dist_type"] == "gamma_pt_si":
         # load pre-trained (pt) system identification (si) model as posterior
         posterior = torch.load(
             model_args["si_model_path"], map_location=trainer_args["device"]
         )
-    elif model_args["posterior_dist"] == "gamma_pt_vp":
+    elif model_args["post_dist_type"] == "gamma_pt_vp":
         # load pre-trained (pt) variational posterior (vp) model as posterior
         posterior = torch.load(
             model_args["vp_model_path"], map_location=trainer_args["device"]
@@ -298,8 +299,8 @@ def train_vpost_prior(
     variational_model = VariationalBound(
         joint=joint,
         posterior=posterior,
-        bound_type=model_args["bound_type"],
-        n_samples=model_args["n_bound_samples"],
+        bound_type=trainer_args["bound_type"],
+        n_samples=trainer_args["n_bound_samples"],
     )
 
     eval_interval = 1
@@ -310,13 +311,12 @@ def train_vpost_prior(
         "uncertainty": "sem",
         "normalize": "none",
         "unit": "nats",
-        "add_eps_to_data_dim": model_args["posterior_zero_avoiding"],
+        "add_eps_to_data_dim": zero_avoid(model_args["post_dist_type"]),
     }
     # build trainer
     trainer = build_vpost_prior_trainer(
         model=variational_model,
         data_dim=image_dim,
-        loss_type=trainer_args["loss_type"],
         n_bound_samples=trainer_args["n_bound_samples"],
         lr=trainer_args["lr"],
         weight_decay=trainer_args["weight_decay"],
@@ -351,7 +351,7 @@ def train_vpost_prior(
     # 3. posterior log likelihood on recorded latent (neuron) data
     # 4. prior log likelihood on recorded latent (neuron) data
 
-    n_eval_samples = (10_000,)  # TODO: parameterize this?
+    n_eval_samples = 1000  # TODO: parameterize this?
     with torch.no_grad():
         # 1. variational bound
         variational_model.eval()
@@ -360,7 +360,7 @@ def train_vpost_prior(
             data_loader=train_loader,
             data_dim=image_dim,
             n_samples=n_eval_samples,
-            bound_type=trainer_args["loss_type"],
+            bound_type=trainer_args["bound_type"],
             device=trainer.device,
             reduction="mean",
             uncertainty="sem",
@@ -372,7 +372,7 @@ def train_vpost_prior(
             data_loader=val_loader,
             data_dim=image_dim,
             n_samples=n_eval_samples,
-            bound_type=trainer_args["loss_type"],
+            bound_type=trainer_args["bound_type"],
             device=trainer.device,
             reduction="mean",
             uncertainty="sem",
@@ -384,7 +384,7 @@ def train_vpost_prior(
             data_loader=test_loader,
             data_dim=image_dim,
             n_samples=n_eval_samples,
-            bound_type=trainer_args["loss_type"],
+            bound_type=trainer_args["bound_type"],
             device=trainer.device,
             reduction="mean",
             uncertainty="sem",
@@ -393,7 +393,7 @@ def train_vpost_prior(
         )
 
         # 2. marginalized log likelihood
-        train_marginal_obs_ll_mean, train_marginal_obs_ll_sem = logl_mc_marginal(
+        train_marginal_obs_ll_mean, train_marginal_obs_ll_sem = logl_mc_marginal_eval(
             variational_model.joint,
             train_loader,
             data_dim=image_dim,
@@ -405,7 +405,7 @@ def train_vpost_prior(
             unit="nats",
         )
 
-        val_marginal_obs_ll_mean, val_marginal_obs_ll_sem = logl_mc_marginal(
+        val_marginal_obs_ll_mean, val_marginal_obs_ll_sem = logl_mc_marginal_eval(
             variational_model.joint,
             val_loader,
             data_dim=image_dim,
@@ -417,7 +417,7 @@ def train_vpost_prior(
             unit="nats",
         )
 
-        test_marginal_obs_ll_mean, test_marginal_obs_ll_sem = logl_mc_marginal(
+        test_marginal_obs_ll_mean, test_marginal_obs_ll_sem = logl_mc_marginal_eval(
             variational_model.joint,
             test_loader,
             data_dim=image_dim,
@@ -440,9 +440,7 @@ def train_vpost_prior(
             uncertainty="sem",
             normalize="none",
             unit="nats",
-            add_eps_to_data_dim=model_args[
-                "posterior_zero_avoiding"
-            ],  # necessary for certain distributions (e.g. gamma)
+            add_eps_to_data_dim=zero_avoid(model_args["post_dist_type"]),
         )
         val_post_ll_mean, val_post_ll_sem = compute_logl(
             model=variational_model.posterior,
@@ -454,9 +452,7 @@ def train_vpost_prior(
             uncertainty="sem",
             normalize="none",
             unit="nats",
-            add_eps_to_data_dim=model_args[
-                "posterior_zero_avoiding"
-            ],  # necessary for certain distributions (e.g. gamma)
+            add_eps_to_data_dim=zero_avoid(model_args["post_dist_type"]),
         )
         test_post_ll_mean, test_post_ll_sem = compute_logl(
             model=variational_model.posterior,
@@ -468,9 +464,7 @@ def train_vpost_prior(
             uncertainty="sem",
             normalize="none",
             unit="nats",
-            add_eps_to_data_dim=model_args[
-                "posterior_zero_avoiding"
-            ],  # necessary for certain distributions (e.g. gamma)
+            add_eps_to_data_dim=zero_avoid(model_args["post_dist_type"]),
         )
 
         # 4. prior log likelihood on recorded latent (neuron) data

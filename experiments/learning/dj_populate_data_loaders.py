@@ -6,6 +6,7 @@ from task_transfer.utils.utils import dict_product
 dataloader_configs = OrderedDict(
     data_fname=[
         "/src/project/data/synthetic/haefner_2afc/original_haefner_2afc_task_1_dataset.pkl",
+        "/src/project/data/synthetic/haefner_2afc/original_haefner_2afc_task_2_dataset.pkl",
         "/src/project/data/synthetic/haefner_2afc/flat_haefner_dataset.pkl",
         "/src/project/data/synthetic/haefner_2afc/haefner_model_1neuron_task1_dataset.pkl",
         "/src/project/data/synthetic/haefner_2afc/haefner_2neuron_task1.pkl",
