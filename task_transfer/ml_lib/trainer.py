@@ -216,6 +216,8 @@ class Trainer:
             model (torch.nn.Module): The model to be evaluated.
             val_loader (torch.utils.data.DataLoader): DataLoader for validation data.
         """
-        return self.eval_criterion(
-            model, val_loader, epoch, self.device, self.eval_params, self.logger
-        )
+        with torch.no_grad():
+            model.eval()
+            return self.eval_criterion(
+                model, val_loader, epoch, self.device, self.eval_params, self.logger
+            )
